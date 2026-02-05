@@ -6,6 +6,11 @@ terraform {
       source  = "tehcyx/kind"
       version = "~> 0.5"
     }
+
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.25"
+    }
   }
 }
 
@@ -18,3 +23,6 @@ module "cluster" {
   worker_count = 1
 }
 
+provider "kubernetes" {
+  config_path = "~/.kube/config"
+}
