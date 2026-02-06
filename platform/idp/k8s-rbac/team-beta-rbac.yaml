@@ -1,0 +1,35 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: team-beta-dev
+  namespace: team-beta
+rules:
+  - apiGroups: ["", "apps", "extensions"]
+    resources:
+      - pods
+      - services
+      - deployments
+      - replicasets
+      - configmaps
+      - secrets
+      - ingresses
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-beta-dev-binding
+  namespace: team-beta
+subjects:
+  - kind: Group
+    name: team-beta-developers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: team-beta-dev
+  apiGroup: rbac.authorization.k8s.io

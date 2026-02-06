@@ -1,0 +1,38 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: team-alpha-dev
+  namespace: team-alpha
+rules:
+  # Allow full management of common app resources in team-alpha
+  - apiGroups: ["", "apps", "extensions"]
+    resources:
+      - pods
+      - services
+      - deployments
+      - replicasets
+      - configmaps
+      - secrets
+      - ingresses
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Allow viewing events for troubleshooting
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-alpha-dev-binding
+  namespace: team-alpha
+subjects:
+  # In real life this would be an IdP group (e.g. Azure AD group)
+  - kind: Group
+    name: team-alpha-developers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: team-alpha-dev
+  apiGroup: rbac.authorization.k8s.io
