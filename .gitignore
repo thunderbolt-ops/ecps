@@ -1,0 +1,21 @@
+
+# --- ECPS local lab ignores ---
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+terraform.tfvars
+*.tfvars
+*.tfvars.json
+
+# kube / kind local artifacts
+kubeconfig
+kubeconfig-*
+**/kubeconfig
+.kube/
+
+# logs / temp
+*.log
+tmp/
+.DS_Store
