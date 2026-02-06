@@ -19,3 +19,4 @@ kubeconfig-*
 *.log
 tmp/
 .DS_Store
+infra/envs/stage/ecps-stage-config

@@ -1,12 +1,12 @@
-# Staging Environment
+# Development Environment
 
 This directory defines the infrastructure configuration for
-the ECPS staging environment.
+the ECPS development environment.
 
 Characteristics:
-- Closely mirrors production configuration
-- Used for pre-production validation
-- SLO and alert behavior tested here
+- Lower resource limits
+- Faster iteration and experimentation
+- Used for validating platform changes before promotion
 
-Staging acts as the final gate before production changes.
+This environment is expected to be frequently recreated.
 
