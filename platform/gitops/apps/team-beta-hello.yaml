@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: team-beta-hello
+  namespace: platform-system
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/thunderbolt-ops/ecps.git
+    targetRevision: main
+    path: apps/team-beta/hello-app/manifests
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: team-beta
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

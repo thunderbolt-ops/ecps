@@ -1,8 +1,9 @@
 #############################
-# Default deny ingress
+# TEAM ALPHA NETWORK POLICIES
 #############################
 
-resource "kubernetes_network_policy" "default_deny_ingress_team_alpha" {
+# 1. Default deny all ingress to team-alpha
+resource "kubernetes_network_policy" "team_alpha_default_deny_ingress" {
   metadata {
     name      = "default-deny-ingress"
     namespace = kubernetes_namespace.team_alpha.metadata[0].name
@@ -14,25 +15,10 @@ resource "kubernetes_network_policy" "default_deny_ingress_team_alpha" {
   }
 }
 
-resource "kubernetes_network_policy" "default_deny_ingress_team_beta" {
+# 2. Allow ingress from same namespace (team-alpha)
+resource "kubernetes_network_policy" "team_alpha_allow_same_namespace_ingress" {
   metadata {
-    name      = "default-deny-ingress"
-    namespace = kubernetes_namespace.team_beta.metadata[0].name
-  }
-
-  spec {
-    pod_selector {}
-    policy_types = ["Ingress"]
-  }
-}
-
-#############################
-# Allow same-namespace traffic
-#############################
-
-resource "kubernetes_network_policy" "allow_same_namespace_team_alpha" {
-  metadata {
-    name      = "allow-same-namespace"
+    name      = "allow-same-namespace-ingress"
     namespace = kubernetes_namespace.team_alpha.metadata[0].name
   }
 
@@ -49,30 +35,8 @@ resource "kubernetes_network_policy" "allow_same_namespace_team_alpha" {
   }
 }
 
-resource "kubernetes_network_policy" "allow_same_namespace_team_beta" {
-  metadata {
-    name      = "allow-same-namespace"
-    namespace = kubernetes_namespace.team_beta.metadata[0].name
-  }
-
-  spec {
-    pod_selector {}
-
-    ingress {
-      from {
-        pod_selector {}
-      }
-    }
-
-    policy_types = ["Ingress"]
-  }
-}
-
-#############################
-# Allow platform -> apps
-#############################
-
-resource "kubernetes_network_policy" "allow_platform_to_team_alpha" {
+# 3. Allow ingress from platform namespaces to team-alpha
+resource "kubernetes_network_policy" "team_alpha_allow_platform_ingress" {
   metadata {
     name      = "allow-platform-ingress"
     namespace = kubernetes_namespace.team_alpha.metadata[0].name
@@ -95,7 +59,78 @@ resource "kubernetes_network_policy" "allow_platform_to_team_alpha" {
   }
 }
 
-resource "kubernetes_network_policy" "allow_platform_to_team_beta" {
+# 4. Default deny all egress from team-alpha
+resource "kubernetes_network_policy" "team_alpha_default_deny_egress" {
+  metadata {
+    name      = "default-deny-egress"
+    namespace = kubernetes_namespace.team_alpha.metadata[0].name
+  }
+
+  spec {
+    pod_selector {}
+    policy_types = ["Egress"]
+  }
+}
+
+# 5. Allow egress to same namespace (team-alpha)
+resource "kubernetes_network_policy" "team_alpha_allow_same_namespace_egress" {
+  metadata {
+    name      = "allow-same-namespace-egress"
+    namespace = kubernetes_namespace.team_alpha.metadata[0].name
+  }
+
+  spec {
+    pod_selector {}
+
+    egress {
+      to {
+        pod_selector {}
+      }
+    }
+
+    policy_types = ["Egress"]
+  }
+}
+
+#############################
+# TEAM BETA NETWORK POLICIES
+#############################
+
+# 6. Default deny all ingress to team-beta
+resource "kubernetes_network_policy" "team_beta_default_deny_ingress" {
+  metadata {
+    name      = "default-deny-ingress"
+    namespace = kubernetes_namespace.team_beta.metadata[0].name
+  }
+
+  spec {
+    pod_selector {}
+    policy_types = ["Ingress"]
+  }
+}
+
+# 7. Allow ingress from same namespace (team-beta)
+resource "kubernetes_network_policy" "team_beta_allow_same_namespace_ingress" {
+  metadata {
+    name      = "allow-same-namespace-ingress"
+    namespace = kubernetes_namespace.team_beta.metadata[0].name
+  }
+
+  spec {
+    pod_selector {}
+
+    ingress {
+      from {
+        pod_selector {}
+      }
+    }
+
+    policy_types = ["Ingress"]
+  }
+}
+
+# 8. Allow ingress from platform namespaces to team-beta
+resource "kubernetes_network_policy" "team_beta_allow_platform_ingress" {
   metadata {
     name      = "allow-platform-ingress"
     namespace = kubernetes_namespace.team_beta.metadata[0].name
@@ -117,3 +152,37 @@ resource "kubernetes_network_policy" "allow_platform_to_team_beta" {
     policy_types = ["Ingress"]
   }
 }
+
+# 9. Default deny all egress from team-beta
+resource "kubernetes_network_policy" "team_beta_default_deny_egress" {
+  metadata {
+    name      = "default-deny-egress"
+    namespace = kubernetes_namespace.team_beta.metadata[0].name
+  }
+
+  spec {
+    pod_selector {}
+    policy_types = ["Egress"]
+  }
+}
+
+# 10. Allow egress to same namespace (team-beta)
+resource "kubernetes_network_policy" "team_beta_allow_same_namespace_egress" {
+  metadata {
+    name      = "allow-same-namespace-egress"
+    namespace = kubernetes_namespace.team_beta.metadata[0].name
+  }
+
+  spec {
+    pod_selector {}
+
+    egress {
+      to {
+        pod_selector {}
+      }
+    }
+
+    policy_types = ["Egress"]
+  }
+}
+

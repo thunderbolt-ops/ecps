@@ -29,8 +29,9 @@ module "cluster" {
 }
 
 provider "kubernetes" {
-  config_path = "~/.kube/config"
+  config_path = pathexpand("~/.kube/config")
 }
+
 
 provider "helm" {
   kubernetes {

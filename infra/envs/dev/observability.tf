@@ -15,7 +15,7 @@ resource "helm_release" "kube_prometheus_stack" {
     yamlencode({
       prometheus = {
         prometheusSpec = {
-          retention = "6h"
+          retention = "12h"
         }
       }
 
