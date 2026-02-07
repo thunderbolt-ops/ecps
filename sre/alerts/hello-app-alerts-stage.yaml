@@ -1,0 +1,43 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hello-app-alerts-stage
+  namespace: platform-observability
+  labels:
+    app.kubernetes.io/name: kube-prometheus-stack
+    app.kubernetes.io/instance: kube-prometheus-stack
+    role: alert-rules
+    ecps.env: stage
+spec:
+  groups:
+    - name: hello-app-availability-stage
+      rules:
+        - alert: HelloAppUnavailableWarningStage
+          expr: kube_deployment_status_replicas_available{
+                  namespace="team-alpha",
+                  deployment="hello-app"
+                } < 1
+          # Stage is stricter: only 1 minute of downtime before warning
+          for: 1m
+          labels:
+            severity: warning
+            env: stage
+            service: hello-app
+          annotations:
+            summary: "Stage: hello-app not available (team-alpha)"
+            description: "In stage, hello-app deployment in team-alpha has no available replicas for more than 1 minute."
+
+        - alert: HelloAppUnavailableCriticalStage
+          expr: kube_deployment_status_replicas_available{
+                  namespace="team-alpha",
+                  deployment="hello-app"
+                } < 1
+          # Stage is even stricter: 3m for critical (dev might be 10m+)
+          for: 3m
+          labels:
+            severity: critical
+            env: stage
+            service: hello-app
+          annotations:
+            summary: "Stage CRITICAL: hello-app down (team-alpha)"
+            description: "In stage, hello-app deployment in team-alpha has had no available replicas for more than 3 minutes."

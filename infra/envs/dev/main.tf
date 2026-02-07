@@ -19,23 +19,27 @@ terraform {
   }
 }
 
+
 provider "kind" {}
 
+/*
 module "cluster" {
   source = "../../modules/cluster"
 
   cluster_name = "ecps-dev"
   worker_count = 1
 }
+*/
 
 provider "kubernetes" {
-  config_path = pathexpand("~/.kube/config")
+  config_path    = pathexpand("~/.kube/config")
+  config_context = "kind-ecps-dev"
 }
-
 
 provider "helm" {
   kubernetes {
-    config_path = "~/.kube/config"
+    config_path    = pathexpand("~/.kube/config")
+    config_context = "kind-ecps-dev"
   }
 }
 

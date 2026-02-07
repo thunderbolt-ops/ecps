@@ -1,1 +1,1 @@
-{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"cluster","Source":"../../modules/cluster","Dir":"../../modules/cluster"}]}
+{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"cluster","Source":"../../modules/cluster","Dir":"../../modules/cluster"},{"Key":"platform_data","Source":"../../modules/platform-data","Dir":"../../modules/platform-data"},{"Key":"platform_identity","Source":"../../modules/platform-identity","Dir":"../../modules/platform-identity"}]}

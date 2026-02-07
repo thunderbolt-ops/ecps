@@ -1,0 +1,101 @@
+# File: sre/rules/hello-app-slo-rules.yaml
+#
+# Purpose:
+#   Define SLI/SLO metrics and alerts for team-alpha hello-app.
+#
+# SLI definition:
+#   Availability = available replicas / desired replicas
+#
+# SLO:
+#   Target: 99.0% availability
+#   Window: 30 days (simulated; in dev we'll just use shorter windows)
+#
+# This is a simplified version suitable for lab/demo.
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hello-app-slo
+  namespace: platform-observability
+  labels:
+    app: hello-app-slo
+    role: slo
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: hello-app-slo
+      interval: 30s
+      rules:
+        # Base SLI: instantaneous availability ratio
+        - record: hello_app_alpha_available_replicas
+          expr: |
+            kube_deployment_status_replicas_available{
+              namespace="team-alpha",
+              deployment="hello-app"
+            }
+
+        - record: hello_app_alpha_desired_replicas
+          expr: |
+            kube_deployment_spec_replicas{
+              namespace="team-alpha",
+              deployment="hello-app"
+            }
+
+        - record: hello_app_alpha_sli
+          expr: |
+            clamp_min(
+              hello_app_alpha_available_replicas
+              /
+              hello_app_alpha_desired_replicas,
+              0
+            )
+
+        # Windowed SLI over last 5 minutes (fast feedback)
+        - record: hello_app_alpha_sli_5m
+          expr: |
+            avg_over_time(hello_app_alpha_sli[5m])
+
+        # Windowed SLI over last 30 minutes (slightly more stable)
+        - record: hello_app_alpha_sli_30m
+          expr: |
+            avg_over_time(hello_app_alpha_sli[30m])
+
+        # Simple SLO evaluation: target 0.99
+        - record: hello_app_alpha_error_budget_burn_5m
+          expr: |
+            (1 - hello_app_alpha_sli_5m) / (1 - 0.99)
+
+        - record: hello_app_alpha_error_budget_burn_30m
+          expr: |
+            (1 - hello_app_alpha_sli_30m) / (1 - 0.99)
+
+        # Alert: fast burn (both short and medium windows bad)
+        - alert: HelloAppAlphaFastBurn
+          expr: |
+            (hello_app_alpha_error_budget_burn_5m > 5)
+            and
+            (hello_app_alpha_error_budget_burn_30m > 1)
+          for: 5m
+          labels:
+            severity: warning
+            team: team-alpha
+          annotations:
+            summary: "hello-app (team-alpha) fast error budget burn"
+            description: |
+              hello-app in team-alpha is burning error budget quickly.
+              5m burn rate: {{ printf "%.2f" $value }}
+              SLO target: 99.0% availability.
+
+        # Alert: sustained burn (only medium window bad)
+        - alert: HelloAppAlphaSlowBurn
+          expr: |
+            hello_app_alpha_error_budget_burn_30m > 2
+          for: 30m
+          labels:
+            severity: critical
+            team: team-alpha
+          annotations:
+            summary: "hello-app (team-alpha) sustained error budget burn"
+            description: |
+              hello-app in team-alpha is violating SLO over the last 30 minutes.
+              Check deployment availability and upstream dependencies.

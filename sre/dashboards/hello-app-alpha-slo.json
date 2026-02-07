@@ -1,0 +1,130 @@
+{
+  "id": null,
+  "uid": "hello-app-alpha-slo",
+  "title": "ECPS - Hello App SLO (team-alpha)",
+  "tags": ["ecps", "slo", "team-alpha"],
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Current SLI (Last 5m)",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "hello_app_alpha_sli_5m",
+          "legendFormat": "SLI 5m",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Current SLI (Last 30m)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "hello_app_alpha_sli_30m",
+          "legendFormat": "SLI 30m",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "SLI over Time",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "hello_app_alpha_sli",
+          "legendFormat": "SLI (instant)",
+          "refId": "A"
+        },
+        {
+          "expr": "hello_app_alpha_sli_5m",
+          "legendFormat": "SLI 5m",
+          "refId": "B"
+        },
+        {
+          "expr": "hello_app_alpha_sli_30m",
+          "legendFormat": "SLI 30m",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Error Budget Burn",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "hello_app_alpha_error_budget_burn_5m",
+          "legendFormat": "Burn 5m",
+          "refId": "A"
+        },
+        {
+          "expr": "hello_app_alpha_error_budget_burn_30m",
+          "legendFormat": "Burn 30m",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "time": { "from": "now-6h", "to": "now" }
+}

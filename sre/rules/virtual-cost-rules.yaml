@@ -1,0 +1,78 @@
+# File: sre/rules/virtual-cost-rules.yaml
+#
+# Purpose:
+#   Define "virtual" cost metrics based on requested CPU and memory,
+#   aggregated by namespace and team labels.
+#
+# Notes:
+#   - Uses kube-prometheus-stack metric:
+#       kube_pod_container_resource_requests
+#     with labels:
+#       resource = "cpu" / "memory"
+#       unit     = "core" / "byte"
+#   - Prices are synthetic ("credits") and for demo only.
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ecps-virtual-cost
+  namespace: platform-observability
+  labels:
+    app: ecps-virtual-cost
+    role: finops
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: virtual-cost
+      interval: 1m
+      rules:
+        # --- Per-namespace CPU cost (instantaneous) ---
+        # Assumptions:
+        #   - 1 vCPU request = 10 credits per hour
+        #
+        - record: ecps_virtual_cpu_cost_credits_per_hour
+          expr: |
+            sum by (namespace) (
+              kube_pod_container_resource_requests{
+                resource="cpu",
+                unit="core"
+              }
+            ) * 10
+
+        # --- Per-namespace memory cost (instantaneous) ---
+        # Assumptions:
+        #   - 1 GiB requested memory = 2 credits per hour
+        #
+        - record: ecps_virtual_memory_cost_credits_per_hour
+          expr: |
+            sum by (namespace) (
+              kube_pod_container_resource_requests{
+                resource="memory",
+                unit="byte"
+              } / 1024 / 1024 / 1024
+            ) * 2
+
+        # --- Total cost per namespace (CPU + memory) ---
+        - record: ecps_virtual_total_cost_credits_per_hour
+          expr: |
+            ecps_virtual_cpu_cost_credits_per_hour
+            +
+            ecps_virtual_memory_cost_credits_per_hour
+
+        # --- Cost per team based on namespace pattern ---
+        #
+        # For namespaces named "team-alpha", "team-beta", etc.,
+        # this derives a "team" label from the namespace.
+        #
+        - record: ecps_virtual_total_cost_credits_per_hour_by_team
+          expr: |
+            sum by (team) (
+              label_replace(
+                ecps_virtual_total_cost_credits_per_hour,
+                "team",
+                "$1",
+                "namespace",
+                "team-(.*)"
+              )
+            )
+

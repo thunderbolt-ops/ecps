@@ -4,25 +4,18 @@ metadata:
   name: hello-app-alerts
   namespace: platform-observability
   labels:
-    # Must match the Helm release label used by kube-prometheus-stack
     release: kube-prometheus-stack
 spec:
   groups:
     - name: hello-app.rules
       rules:
-        # Warning: hello-app unavailable for > 2 minutes
+        # Warning: hello-app has no available replicas for > 2 minutes
         - alert: HelloAppUnavailableWarning
           expr: |
-            (
-              sum by (namespace) (
-                max_over_time(
-                  kube_pod_container_status_ready{
-                    namespace=~"team-alpha|team-beta",
-                    pod=~"hello-app-.*"
-                  }[2m]
-                )
-              ) < 1
-            )
+            kube_deployment_status_replicas_available{
+              namespace=~"team-alpha|team-beta",
+              deployment="hello-app"
+            } < 1
           for: 2m
           labels:
             severity: warning
@@ -30,22 +23,16 @@ spec:
           annotations:
             summary: "Hello app unavailable (warning)"
             description: |
-              hello-app in namespace {{ $labels.namespace }} has no Ready pods
+              hello-app in namespace {{ $labels.namespace }} has no available replicas
               for more than 2 minutes.
 
-        # Critical: hello-app unavailable for > 5 minutes
+        # Critical: hello-app has no available replicas for > 5 minutes
         - alert: HelloAppUnavailableCritical
           expr: |
-            (
-              sum by (namespace) (
-                max_over_time(
-                  kube_pod_container_status_ready{
-                    namespace=~"team-alpha|team-beta",
-                    pod=~"hello-app-.*"
-                  }[5m]
-                )
-              ) < 1
-            )
+            kube_deployment_status_replicas_available{
+              namespace=~"team-alpha|team-beta",
+              deployment="hello-app"
+            } < 1
           for: 5m
           labels:
             severity: critical
@@ -53,10 +40,10 @@ spec:
           annotations:
             summary: "Hello app unavailable (critical)"
             description: |
-              hello-app in namespace {{ $labels.namespace }} has no Ready pods
-              for more than 5 minutes.
+              hello-app in namespace {{ $labels.namespace }} has had no available replicas
+              for more than 5 minutes. User-visible impact is very likely.
 
-        # Restart burst: possible crashloop
+        # Restart burst: possible crashloop (unchanged)
         - alert: HelloAppRestartBurst
           expr: |
             increase(
@@ -74,3 +61,4 @@ spec:
             description: |
               hello-app pods in namespace {{ $labels.namespace }} restarted
               more than 3 times in the last 5 minutes.
+
