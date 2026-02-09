@@ -9,16 +9,6 @@ resource "kubernetes_namespace" "platform_system" {
   }
 }
 
-resource "kubernetes_namespace" "platform_data" {
-  metadata {
-    name = "platform-data"
-    labels = {
-      "ecps.io/owner" = "platform"
-      "ecps.io/type"  = "data"
-    }
-  }
-}
-
 
 resource "kubernetes_namespace" "platform_observability" {
   metadata {
@@ -30,6 +20,20 @@ resource "kubernetes_namespace" "platform_observability" {
     }
   }
 }
+
+
+resource "kubernetes_namespace" "platform_data" {
+  metadata {
+    name = "platform-data"
+    labels = {
+      "ecps.io/owner" = "platform"
+      "ecps.io/type"  = "data"
+    }
+  }
+}
+
+
+
 
 resource "kubernetes_namespace" "team_alpha" {
   metadata {
