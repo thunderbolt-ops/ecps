@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: billing-api
-          image: ecps-billing-api:0.1.0   # placeholder, we’ll adjust later
+          image: ecps-billing-api:0.2.0   # placeholder, we’ll adjust later
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
@@ -44,8 +44,19 @@ spec:
               cpu: "500m"
               memory: "256Mi"
           env:
-            # We will wire these in Step 2 (Postgres, Redis, MinIO, Keycloak)
             - name: APP_ENV
               value: "dev"
             - name: APP_TEAM
               value: "team-alpha"
+
+            - name: DB_HOST
+              value: "postgres.platform-data.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "billing"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "dev-postgres-password"
+
