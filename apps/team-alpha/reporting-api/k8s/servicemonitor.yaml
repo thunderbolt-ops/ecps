@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: reporting-api
+  namespace: team-alpha
+  labels:
+    app: reporting-api
+    team: team-alpha
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: reporting-api
+  namespaceSelector:
+    matchNames:
+      - team-alpha
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
