@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: reporting-api
+  namespace: team-alpha
+  labels:
+    app: reporting-api
+    team: team-alpha
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+    - host: reporting.team-alpha.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: reporting-api
+                port:
+                  name: http
