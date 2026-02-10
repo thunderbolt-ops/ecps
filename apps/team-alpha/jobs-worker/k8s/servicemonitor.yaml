@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: jobs-worker
+  namespace: team-alpha
+  labels:
+    app: jobs-worker
+    team: team-alpha
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: jobs-worker
+  namespaceSelector:
+    matchNames:
+      - team-alpha
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s

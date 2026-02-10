@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jobs-api
+  namespace: team-alpha
+  labels:
+    app: jobs-api
+spec:
+  selector:
+    app: jobs-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
