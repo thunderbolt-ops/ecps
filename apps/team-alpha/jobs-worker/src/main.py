@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 
 import psycopg2
+from psycopg2 import errors
 from prometheus_client import Counter, Histogram, Gauge, start_http_server
 from redis import Redis
 from minio import Minio
@@ -92,20 +93,29 @@ def process_cost_report_job(conn, job):
     """
     Example "processing": aggregate total cost for the given team
     from usage_records and write result as JSON to MinIO.
+
+    If the usage_records table does not exist (lab out-of-sync), we treat
+    the total_cost as 0 instead of failing the job.
     """
     job_id = job["id"]
     team = job["team"]
 
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT COALESCE(SUM(cost), 0)
-            FROM usage_records
-            WHERE team = %s
-            """,
-            (team,),
-        )
-        total_cost = cur.fetchone()[0]
+    # 1) Aggregate cost from usage_records, but be tolerant if table is missing
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COALESCE(SUM(cost), 0)
+                FROM usage_records
+                WHERE team = %s
+                """,
+                (team,),
+            )
+            total_cost = cur.fetchone()[0]
+    except errors.UndefinedTable:
+        # Table does not exist in this DB; log and assume 0 cost.
+        print("[WARN] usage_records table not found; treating total_cost as 0")
+        total_cost = 0
 
     result = {
         "job_id": job_id,
@@ -115,6 +125,11 @@ def process_cost_report_job(conn, job):
         "total_cost": float(total_cost),
     }
 
+    # 2) Ensure bucket exists before writing
+    if not minio_client.bucket_exists(MINIO_BUCKET):
+        minio_client.make_bucket(MINIO_BUCKET)
+
+    # 3) Write result JSON to MinIO
     object_name = f"{job_id}.json"
     data_bytes = json.dumps(result).encode("utf-8")
     minio_client.put_object(
@@ -127,6 +142,7 @@ def process_cost_report_job(conn, job):
 
     result_location = f"s3://{MINIO_BUCKET}/{object_name}"
 
+    # 4) Update job row with completed status + result_location
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -140,15 +156,14 @@ def process_cost_report_job(conn, job):
         )
 
 
+
+
 def process_job_loop():
     conn = get_pg_conn()
     print("jobs-worker started, polling Redis queue...")
 
     while True:
-        # Update queue depth gauge
         QUEUE_DEPTH.set(redis_client.llen(JOB_QUEUE_KEY))
-
-        # BRPOP blocks until a job is available (timeout 5s so we can update metrics)
         item = redis_client.brpop(JOB_QUEUE_KEY, timeout=5)
         if not item:
             continue
@@ -175,7 +190,6 @@ def process_job_loop():
             if job_type == "cost-report":
                 process_cost_report_job(conn, job)
             else:
-                # Unknown job types are treated as failures for now
                 with conn.cursor() as cur:
                     cur.execute(
                         """
@@ -205,6 +219,7 @@ def process_job_loop():
                     """,
                     ("failed", datetime.utcnow(), job["id"]),
                 )
+
 
 
 if __name__ == "__main__":
