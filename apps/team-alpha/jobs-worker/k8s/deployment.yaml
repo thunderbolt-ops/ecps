@@ -44,7 +44,7 @@ spec:
             - name: MINIO_ACCESS_KEY
               value: "minioadmin"
             - name: MINIO_SECRET_KEY
-              value: "minioadmin"
+              value: "dev-minio-password"
             - name: MINIO_SECURE
               value: "false"
             - name: MINIO_BUCKET
