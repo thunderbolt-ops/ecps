@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-api
+  namespace: team-alpha
+  labels:
+    app: billing-api
+    team: team-alpha
+spec:
+  type: ClusterIP
+  selector:
+    app: billing-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
