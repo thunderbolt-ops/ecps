@@ -9,6 +9,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the worker source
 COPY src/ .
 
+ENTRYPOINT []
+
 # Run the worker main
 CMD ["python", "main.py"]
 

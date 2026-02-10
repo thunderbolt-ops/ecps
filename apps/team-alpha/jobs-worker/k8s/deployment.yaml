@@ -1,6 +1,6 @@
 containers:
   - name: jobs-worker
-    image: ecps-jobs-worker:0.1.4
+    image: ecps-jobs-worker:0.1.5
     imagePullPolicy: IfNotPresent
 
     # 🔴 THIS IS THE FIX
