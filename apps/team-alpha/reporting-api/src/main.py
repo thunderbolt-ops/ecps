@@ -5,12 +5,31 @@ from typing import List, Dict
 import psycopg2
 from fastapi import FastAPI
 from pydantic import BaseModel
+from fastapi.responses import Response
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from starlette.requests import Request
+import time
+
 
 app = FastAPI(
     title="Reporting API",
     description="Read-only reporting service for billing data on ECPS dev platform.",
     version="0.1.0",
 )
+
+
+REQUEST_COUNT = Counter(
+    "reporting_api_requests_total",
+    "Total HTTP requests to reporting-api",
+    ["method", "path", "status"],
+)
+
+REQUEST_LATENCY = Histogram(
+    "reporting_api_request_latency_seconds",
+    "HTTP request latency for reporting-api",
+    ["method", "path"],
+)
+
 
 # --- DB config from env ---
 
@@ -34,6 +53,35 @@ def get_db_connection():
     )
 
 
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    start = time.time()
+    try:
+        response = await call_next(request)
+    except Exception:
+        REQUEST_COUNT.labels(
+            method=request.method,
+            path=request.url.path,
+            status="500",
+        ).inc()
+        REQUEST_LATENCY.labels(
+            method=request.method,
+            path=request.url.path,
+        ).observe(time.time() - start)
+        raise
+
+    REQUEST_COUNT.labels(
+        method=request.method,
+        path=request.url.path,
+        status=str(response.status_code),
+    ).inc()
+    REQUEST_LATENCY.labels(
+        method=request.method,
+        path=request.url.path,
+    ).observe(time.time() - start)
+    return response
+
+
 # --- Models ---
 
 class TeamCost(BaseModel):
@@ -51,6 +99,12 @@ class SummaryResponse(BaseModel):
     total_cost: float
     by_team: List[TeamCost]
     by_service: List[ServiceCost]
+
+
+@app.get("/metrics")
+def metrics():
+    data = generate_latest()
+    return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
 
 # --- Health endpoint ---
