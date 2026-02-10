@@ -1,43 +1,60 @@
-containers:
-  - name: jobs-worker
-    image: ecps-jobs-worker:0.1.5
-    imagePullPolicy: IfNotPresent
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jobs-worker
+  labels:
+    app: jobs-worker
+    team: team-alpha
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jobs-worker
+  template:
+    metadata:
+      labels:
+        app: jobs-worker
+        team: team-alpha
+    spec:
+      containers:
+        - name: jobs-worker
+          image: ecps-jobs-worker:0.1.5
+          imagePullPolicy: IfNotPresent
 
-    # 🔴 THIS IS THE FIX
-    command: ["python", "-u", "main.py"]
+          command: ["python", "-u", "main.py"]
 
-    env:
-      - name: PG_HOST
-        value: postgres.platform-data.svc.cluster.local
-      - name: PG_PORT
-        value: "5432"
-      - name: PG_DB
-        value: billing
-      - name: PG_USER
-        value: postgres
-      - name: PG_PASSWORD
-        value: dev-postgres-password
+          env:
+            - name: PG_HOST
+              value: postgres.platform-data.svc.cluster.local
+            - name: PG_PORT
+              value: "5432"
+            - name: PG_DB
+              value: billing
+            - name: PG_USER
+              value: postgres
+            - name: PG_PASSWORD
+              value: dev-postgres-password
 
-      - name: REDIS_HOST
-        value: redis.platform-data.svc.cluster.local
-      - name: REDIS_PORT
-        value: "6379"
+            - name: REDIS_HOST
+              value: redis.platform-data.svc.cluster.local
+            - name: REDIS_PORT
+              value: "6379"
 
-      - name: MINIO_ENDPOINT
-        value: minio.platform-data.svc.cluster.local:9000
-      - name: MINIO_ACCESS_KEY
-        value: minioadmin
-      - name: MINIO_SECRET_KEY
-        value: dev-minio-password
-      - name: MINIO_SECURE
-        value: "false"
-      - name: MINIO_BUCKET
-        value: jobs-results
+            - name: MINIO_ENDPOINT
+              value: minio.platform-data.svc.cluster.local:9000
+            - name: MINIO_ACCESS_KEY
+              value: minioadmin
+            - name: MINIO_SECRET_KEY
+              value: dev-minio-password
+            - name: MINIO_SECURE
+              value: "false"
+            - name: MINIO_BUCKET
+              value: jobs-results
 
-      - name: JOB_QUEUE_KEY
-        value: jobs:queue
+            - name: JOB_QUEUE_KEY
+              value: jobs:queue
 
-    ports:
-      - name: metrics
-        containerPort: 8001
+          ports:
+            - name: metrics
+              containerPort: 8001
 
