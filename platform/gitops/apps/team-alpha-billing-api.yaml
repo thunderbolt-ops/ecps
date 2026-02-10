@@ -9,7 +9,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/thunderbolt-ops/ecps.git   # change this
+    repoURL: https://github.com/thunderbolt-ops/ecps.git   
     targetRevision: main                                   # or your branch
     path: apps/team-alpha/billing-api/k8s
   destination:
