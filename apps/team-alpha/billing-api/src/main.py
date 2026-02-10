@@ -1,4 +1,10 @@
 import os
+import time
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from starlette.requests import Request
+
 from datetime import datetime
 from typing import List
 
@@ -11,6 +17,27 @@ app = FastAPI(
     description="Internal billing service for team-alpha running on ECPS dev platform.",
     version="0.2.0",
 )
+
+
+# --- Prometheus metrics ---
+
+REQUEST_COUNT = Counter(
+    "billing_api_requests_total",
+    "Total HTTP requests to billing-api",
+    ["method", "path", "status"],
+)
+
+REQUEST_LATENCY = Histogram(
+    "billing_api_request_latency_seconds",
+    "HTTP request latency for billing-api",
+    ["method", "path"],
+)
+
+DB_ERRORS = Counter(
+    "billing_api_db_errors_total",
+    "Total database errors in billing-api",
+)
+
 
 DB_HOST = os.getenv("DB_HOST", "postgres.platform-data.svc.cluster.local")
 DB_PORT = int(os.getenv("DB_PORT", "5432"))
@@ -92,9 +119,48 @@ def init_db():
     conn.close()
 
 
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    start = time.time()
+    try:
+        response = await call_next(request)
+    except Exception:
+        # Count 500s even if exception bubbles up
+        REQUEST_COUNT.labels(
+            method=request.method,
+            path=request.url.path,
+            status="500",
+        ).inc()
+        REQUEST_LATENCY.labels(
+            method=request.method,
+            path=request.url.path,
+        ).observe(time.time() - start)
+        raise
+
+    REQUEST_COUNT.labels(
+        method=request.method,
+        path=request.url.path,
+        status=str(response.status_code),
+    ).inc()
+    REQUEST_LATENCY.labels(
+        method=request.method,
+        path=request.url.path,
+    ).observe(time.time() - start)
+    return response
+
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "billing-api"}
+
+
+@app.get("/metrics")
+def metrics():
+    """Prometheus scrape endpoint."""
+    data = generate_latest()
+    return Response(content=data, media_type=CONTENT_TYPE_LATEST)
+
 
 
 @app.get("/api/v1/usage", response_model=List[UsageRecordOut])
