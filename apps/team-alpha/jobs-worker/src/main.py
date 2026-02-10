@@ -148,8 +148,8 @@ def process_cost_report_job(conn, job):
     minio_client.put_object(
         MINIO_BUCKET,
         object_name,
-        data=data_bytes,
-        length=len(data_bytes),
+        io.BytesIO(result_bytes),
+        length=len(result_bytes),
         content_type="application/json",
     )
 
