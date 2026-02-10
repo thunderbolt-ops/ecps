@@ -19,11 +19,9 @@ spec:
     spec:
       containers:
         - name: jobs-worker
-          image: ecps-jobs-worker:0.1.3
+          image: ecps-jobs-worker:0.1.3   # or 0.1.4, something new
           imagePullPolicy: IfNotPresent
-          ports:
-            - name: metrics
-              containerPort: 8001
+          command: ["python", "-u", "main.py"]   # <── FORCE our script
           env:
             - name: PG_HOST
               value: "postgres.platform-data.svc.cluster.local"
@@ -41,7 +39,7 @@ spec:
               value: "6379"
             - name: MINIO_ENDPOINT
               value: "minio.platform-data.svc.cluster.local:9000"
-            - name: MINIO_ACCESS_KEY
+            - name: MINIO_ACCESS_KEY"
               value: "minioadmin"
             - name: MINIO_SECRET_KEY
               value: "dev-minio-password"
@@ -51,3 +49,4 @@ spec:
               value: "jobs-results"
             - name: JOB_QUEUE_KEY
               value: "jobs:queue"
+
