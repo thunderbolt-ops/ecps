@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: team-alpha-reporting-api
+  namespace: platform-system
+  labels:
+    app.kubernetes.io/part-of: ecps
+    ecps/team: team-alpha
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thunderbolt-ops/ecps.git    # change this
+    targetRevision: main                                    # or your branch
+    path: apps/team-alpha/reporting-api/k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: team-alpha
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
