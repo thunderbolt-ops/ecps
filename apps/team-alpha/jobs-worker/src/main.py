@@ -1,4 +1,5 @@
 import os
+import io
 import json
 import time
 from datetime import datetime
@@ -6,46 +7,59 @@ from datetime import datetime
 import psycopg2
 from psycopg2 import errors
 import redis
-from prometheus_client import Counter, Histogram, Gauge, start_http_server
 from redis import Redis
 from minio import Minio
+from prometheus_client import Counter, Histogram, Gauge, start_http_server
 
-# --------------------------------------------------------------------
-# Env
-# --------------------------------------------------------------------
+# ------------------------------------------------------------
+# Environment variables
+# ------------------------------------------------------------
 
-PG_HOST = os.getenv("PG_HOST", "postgres.platform-data.svc.cluster.local")
+PG_HOST = os.getenv("PG_HOST")
 PG_PORT = int(os.getenv("PG_PORT", "5432"))
-PG_DB = os.getenv("PG_DB", "billing")
-PG_USER = os.getenv("PG_USER", "postgres")
-PG_PASSWORD = os.getenv("PG_PASSWORD", "dev-postgres-password")
+PG_DB = os.getenv("PG_DB")
+PG_USER = os.getenv("PG_USER")
+PG_PASSWORD = os.getenv("PG_PASSWORD")
 
-REDIS_HOST = os.getenv("REDIS_HOST", "redis.platform-data.svc.cluster.local")
+REDIS_HOST = os.getenv("REDIS_HOST")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+JOB_QUEUE_KEY = os.getenv("JOB_QUEUE_KEY", "jobs:queue")
 
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio.platform-data.svc.cluster.local:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "dev-minio-password")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
 MINIO_BUCKET = os.getenv("MINIO_BUCKET", "jobs-results")
 
-JOB_QUEUE_KEY = os.getenv("JOB_QUEUE_KEY", "jobs:queue")
+# ------------------------------------------------------------
+# Prometheus metrics
+# ------------------------------------------------------------
 
+JOBS_PROCESSED_TOTAL = Counter(
+    "jobs_worker_jobs_processed_total",
+    "Total jobs processed by jobs-worker",
+    ["status"],
+)
 
+JOB_DURATION_SECONDS = Histogram(
+    "jobs_worker_job_duration_seconds",
+    "Job processing duration in seconds",
+)
 
-###########################
-#Prints at import and startup
-###########################
+REDIS_QUEUE_DEPTH = Gauge(
+    "jobs_worker_redis_queue_depth",
+    "Current Redis job queue depth",
+)
 
-print("=== jobs-worker starting up ===")
-print(f"PG_HOST={PG_HOST}, PG_DB={PG_DB}, PG_USER={PG_USER}")
-print(f"REDIS_HOST={REDIS_HOST}, REDIS_PORT={REDIS_PORT}")
-print(f"MINIO_ENDPOINT={MINIO_ENDPOINT}, MINIO_BUCKET={MINIO_BUCKET}")
-print("================================")
+# ------------------------------------------------------------
+# Clients
+# ------------------------------------------------------------
 
-
-redis_client = Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
+redis_client: Redis = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    decode_responses=True,
+)
 
 minio_client = Minio(
     MINIO_ENDPOINT,
@@ -54,67 +68,28 @@ minio_client = Minio(
     secure=MINIO_SECURE,
 )
 
-# --------------------------------------------------------------------
-# Metrics
-# --------------------------------------------------------------------
+# ------------------------------------------------------------
+# Database helpers
+# ------------------------------------------------------------
 
-JOBS_PROCESSED = Counter(
-    "jobs_worker_jobs_processed_total",
-    "Jobs processed successfully",
-    ["job_type", "team"],
-)
-
-JOBS_FAILED = Counter(
-    "jobs_worker_jobs_failed_total",
-    "Jobs that failed processing",
-    ["job_type", "team"],
-)
-
-JOB_DURATION = Histogram(
-    "jobs_worker_job_duration_seconds",
-    "Job processing duration",
-    ["job_type"],
-)
-
-QUEUE_DEPTH = Gauge(
-    "jobs_worker_queue_depth",
-    "Number of jobs currently in the queue",
-)
-# --------------------------------------------------------------------
-# Clients
-# --------------------------------------------------------------------
-
-
-def get_pg_conn():
-    conn = psycopg2.connect(
+def get_db_connection():
+    return psycopg2.connect(
         host=PG_HOST,
         port=PG_PORT,
         dbname=PG_DB,
         user=PG_USER,
         password=PG_PASSWORD,
     )
-    conn.autocommit = True
-    return conn
 
-
-
-
-
-# --------------------------------------------------------------------
-# Helpers
-# --------------------------------------------------------------------
-
+# ------------------------------------------------------------
+# Job processing logic
+# ------------------------------------------------------------
 
 def process_cost_report_job(conn, job):
-    """
-    Aggregate total cost for a team from usage_records and write result to MinIO.
-
-    If the usage_records table does not exist, treat total_cost as 0 instead of failing.
-    """
     job_id = job["id"]
     team = job["team"]
 
-    # 1) Aggregate from usage_records
+    # 1. Aggregate billing data
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -127,7 +102,7 @@ def process_cost_report_job(conn, job):
             )
             total_cost = cur.fetchone()[0]
     except errors.UndefinedTable:
-        print("[WARN] usage_records table not found; treating total_cost as 0")
+        print("[WARN] usage_records table not found; returning cost=0")
         total_cost = 0
 
     result = {
@@ -138,24 +113,26 @@ def process_cost_report_job(conn, job):
         "total_cost": float(total_cost),
     }
 
-    # 2) Ensure bucket exists
+    # 2. Ensure MinIO bucket exists
     if not minio_client.bucket_exists(MINIO_BUCKET):
         minio_client.make_bucket(MINIO_BUCKET)
 
-    # 3) Write JSON to MinIO
+    # 3. Write result to MinIO (CORRECT FIX)
     object_name = f"{job_id}.json"
     data_bytes = json.dumps(result).encode("utf-8")
+    data_stream = io.BytesIO(data_bytes)
+
     minio_client.put_object(
         MINIO_BUCKET,
         object_name,
-        io.BytesIO(result_bytes),
-        length=len(result_bytes),
+        data_stream,
+        length=len(data_bytes),
         content_type="application/json",
     )
 
     result_location = f"s3://{MINIO_BUCKET}/{object_name}"
 
-    # 4) Update job row
+    # 4. Update job status
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -168,42 +145,60 @@ def process_cost_report_job(conn, job):
             ("completed", datetime.utcnow(), result_location, job_id),
         )
 
+# ------------------------------------------------------------
+# Main worker loop
+# ------------------------------------------------------------
 
+def run_worker():
+    print("=== jobs-worker starting up ===")
+    print(
+        f"PG_HOST={PG_HOST}, PG_DB={PG_DB}, PG_USER={PG_USER}\n"
+        f"REDIS_HOST={REDIS_HOST}, REDIS_PORT={REDIS_PORT}\n"
+        f"MINIO_ENDPOINT={MINIO_ENDPOINT}, MINIO_BUCKET={MINIO_BUCKET}"
+    )
+    print("================================")
 
-def process_job_loop():
-    conn = get_pg_conn()
+    conn = get_db_connection()
+    conn.autocommit = True
+
     print("jobs-worker started, polling Redis queue...")
 
     while True:
-        QUEUE_DEPTH.set(redis_client.llen(JOB_QUEUE_KEY))
-        item = redis_client.brpop(JOB_QUEUE_KEY, timeout=5)
-        if not item:
-            continue
-
-        _, payload = item
-        job = json.loads(payload)
-
-        job_type = job.get("job_type", "unknown")
-        team = job.get("team", "unknown")
-
-        print(f"[jobs-worker] picked job id={job.get('id')} type={job_type} team={team}")
-
-        start = time.time()
         try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    UPDATE jobs
-                    SET status = %s,
-                        updated_at = %s
-                    WHERE id = %s
-                    """,
-                    ("running", datetime.utcnow(), job["id"]),
-                )
+            # Track queue depth
+            REDIS_QUEUE_DEPTH.set(redis_client.llen(JOB_QUEUE_KEY))
+
+            # Blocking pop
+            _, job_json = redis_client.blpop(JOB_QUEUE_KEY)
+            job = json.loads(job_json)
+
+            job_id = job["id"]
+            job_type = job["job_type"]
+            team = job["team"]
+
+            print(
+                f"[jobs-worker] picked job id={job_id} "
+                f"type={job_type} team={team}"
+            )
+
+            start = time.time()
 
             if job_type == "cost-report":
                 process_cost_report_job(conn, job)
             else:
+                raise ValueError(f"Unsupported job_type: {job_type}")
+
+            duration = time.time() - start
+            JOB_DURATION_SECONDS.observe(duration)
+            JOBS_PROCESSED_TOTAL.labels(status="completed").inc()
+
+            print(f"[jobs-worker] job {job_id} completed in {duration:.3f}s")
+
+        except Exception as e:
+            JOBS_PROCESSED_TOTAL.labels(status="failed").inc()
+            print(f"[jobs-worker] ERROR processing job: {e}")
+
+            try:
                 with conn.cursor() as cur:
                     cur.execute(
                         """
@@ -212,30 +207,19 @@ def process_job_loop():
                             updated_at = %s
                         WHERE id = %s
                         """,
-                        ("failed", datetime.utcnow(), job["id"]),
+                        ("failed", datetime.utcnow(), job.get("id")),
                     )
-                raise ValueError(f"Unsupported job_type: {job_type}")
+            except Exception as db_err:
+                print(f"[jobs-worker] ERROR updating job status: {db_err}")
 
-            duration = time.time() - start
-            JOB_DURATION.labels(job_type=job_type).observe(duration)
-            JOBS_PROCESSED.labels(job_type=job_type, team=team).inc()
+            time.sleep(1)
 
-        except Exception as exc:
-            print(f"[jobs-worker] ERROR processing job {job.get('id')}: {exc}")
-            JOBS_FAILED.labels(job_type=job_type, team=team).inc()
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    UPDATE jobs
-                    SET status = %s,
-                        updated_at = %s
-                    WHERE id = %s
-                    """,
-                    ("failed", datetime.utcnow(), job["id"]),
-                )
-
+# ------------------------------------------------------------
+# Entrypoint
+# ------------------------------------------------------------
 
 if __name__ == "__main__":
-    # Expose metrics on :8001/metrics
+    # Expose metrics on :8001
     start_http_server(8001)
-    process_job_loop()
+    run_worker()
+
