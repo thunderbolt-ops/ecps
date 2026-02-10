@@ -31,6 +31,20 @@ MINIO_BUCKET = os.getenv("MINIO_BUCKET", "jobs-results")
 
 JOB_QUEUE_KEY = os.getenv("JOB_QUEUE_KEY", "jobs:queue")
 
+
+
+###########################
+#Prints at import and startup
+###########################
+
+print("=== jobs-worker starting up ===")
+print(f"PG_HOST={PG_HOST}, PG_DB={PG_DB}, PG_USER={PG_USER}")
+print(f"REDIS_HOST={REDIS_HOST}, REDIS_PORT={REDIS_PORT}")
+print(f"MINIO_ENDPOINT={MINIO_ENDPOINT}, MINIO_BUCKET={MINIO_BUCKET}")
+print("================================")
+
+
+
 # --------------------------------------------------------------------
 # Clients
 # --------------------------------------------------------------------
@@ -157,7 +171,6 @@ def process_cost_report_job(conn, job):
 
 
 
-
 def process_job_loop():
     conn = get_pg_conn()
     print("jobs-worker started, polling Redis queue...")
@@ -173,6 +186,8 @@ def process_job_loop():
 
         job_type = job.get("job_type", "unknown")
         team = job.get("team", "unknown")
+
+        print(f"[jobs-worker] picked job id={job.get('id')} type={job_type} team={team}")
 
         start = time.time()
         try:
@@ -207,7 +222,7 @@ def process_job_loop():
             JOBS_PROCESSED.labels(job_type=job_type, team=team).inc()
 
         except Exception as exc:
-            print(f"Error processing job {job.get('id')}: {exc}")
+            print(f"[jobs-worker] ERROR processing job {job.get('id')}: {exc}")
             JOBS_FAILED.labels(job_type=job_type, team=team).inc()
             with conn.cursor() as cur:
                 cur.execute(
@@ -219,7 +234,6 @@ def process_job_loop():
                     """,
                     ("failed", datetime.utcnow(), job["id"]),
                 )
-
 
 
 if __name__ == "__main__":
