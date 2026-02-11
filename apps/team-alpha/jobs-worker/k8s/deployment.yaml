@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: jobs-worker
-          image: ecps-jobs-worker:0.1.7
+          image: ecps-jobs-worker:0.1.0
           imagePullPolicy: IfNotPresent
 
           command: ["python", "-u", "main.py"]

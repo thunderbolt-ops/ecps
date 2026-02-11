@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: reporting-api
-          image: ecps-reporting-api:0.2.0
+          image: ecps-reporting-api:0.1.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
