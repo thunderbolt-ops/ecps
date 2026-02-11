@@ -6,7 +6,7 @@ metadata:
   labels:
     app: jobs-api
     team: team-alpha
-    Release: kube-prometheus-stack
+    release: kube-prometheus-stack
 spec:
   selector:
     matchLabels:

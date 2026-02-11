@@ -6,7 +6,7 @@ metadata:
   labels:
     app: billing-api
     team: team-alpha
-    Release: kube-prometheus-stack
+    release: kube-prometheus-stack
 spec:
   selector:
     matchLabels:
