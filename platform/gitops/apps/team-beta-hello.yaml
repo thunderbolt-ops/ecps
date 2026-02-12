@@ -8,7 +8,7 @@ spec:
 
   source:
     repoURL: https://github.com/thunderbolt-ops/ecps.git
-    targetRevision: main
+    targetRevision: feat/billing-platform-app
     path: apps/team-beta/hello-app/manifests
 
   destination:
