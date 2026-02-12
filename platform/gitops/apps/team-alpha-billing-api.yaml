@@ -10,7 +10,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/thunderbolt-ops/ecps.git   
-    targetRevision: main                                   # or your branch
+    targetRevision: feat/billing-platform-app                                   # or your branch
     path: apps/team-alpha/billing-api/k8s
   destination:
     server: https://kubernetes.default.svc
