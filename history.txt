@@ -1,0 +1,1306 @@
+  393  curl -L   https://raw.githubusercontent.com/projectcalico/calico/v3.27.2/manifests/calico.yaml   -o manifests/calico.yaml
+  394  ls manifests
+  395  nano calico.tf
+  396  terraform init
+  397  terraform apply
+  398  cd ~/ecps/infra/modules/cluster
+  399  nano main.tf
+  400  cd ~/ecps/infra/envs/dev
+  401  rm calico.tf
+  402  rm -rf manifests
+  403  cd ~/ecps/infra/envs/dev
+  404  terraform init
+  405  terraform apply
+  406  cd ~/ecps/infra/envs/dev
+  407  rm -f calico.tf
+  408  rm -rf manifests
+  409  cd ~/ecps/infra/envs/dev
+  410  terraform init
+  411  terraform apply
+  412  kind delete cluster --name ecps-dev
+  413  kind create cluster --name ecps-dev --config ecps-dev-config
+  414  kubectl config use-context kind-ecps-dev
+  415  clear
+  416  kind create cluster --name ecps-dev
+  417  kubectl config use-context kind-ecps-dev
+  418  kubectl get nodes
+  419  kubectl get namespaces
+  420  kubectl create namespace platform-system
+  421  kubectl create namespace platform-observability
+  422  kubectl create namespace team-alpha
+  423  kubectl create namespace team-beta
+  424  git --version
+  425  curl --version
+  426  wget --version
+  427  docker --version
+  428  kubectl version --client
+  429  kind version
+  430  terraform version
+  431  helm version
+  432  kind get clusters
+  433  kubectl config get-contexts
+  434  terraform init
+  435  terraform apply
+  436  kubectl get nodes
+  437  kubectl get sa -n platform-system
+  438  kubectl get sa -n team-alpha
+  439  kubectl get sa -n team-beta
+  440  kubectl get cluster
+  441  # To get information about the cluster itself:
+  442  kubectl cluster-info
+  443  # To get nodes in the cluster:
+  444  kubectl get nodes
+  445  # To get current context (which cluster you're connected to):
+  446  kubectl config get-contexts
+  447  # To get all available resource types:
+  448  kubectl api-resources
+  449  kubectl get clusterrole | grep ecps-
+  450  kubectl get clusterrolebinding | grep ecps-
+  451  kubectl get rolebinding -n team-alpha
+  452  kubectl get rolebinding -n team-beta
+  453  kubectl get networkpolicy -n team-alpha
+  454  kubectl get networkpolicy -n team-beta
+  455  kubectl get pods -n platform-system
+  456  kubectl -n platform-system port-forward svc/argocd-server 8080:80
+  457  kubectl -n platform-system get secret   argocd-initial-admin-secret   -o jsonpath="{.data.password}" | base64 -d; echo
+  458  kubectl get pods -n platform-system
+  459  kubectl get svc -n platform-system
+  460  terraform apply
+  461  kubectl get pods -n platform-observability
+  462  kubectl get applications -n platform-system
+  463  kubectl apply -f platform/gitops/apps/team-alpha-hello.yaml
+  464  cd ..
+  465  kubectl apply -f platform/gitops/apps/team-alpha-hello.yaml
+  466  kubectl get applications -n platform-system
+  467  kubectl get pods -n team-alpha
+  468  kubectl get svc -n team-alpha
+  469  kubectl get ingress -n team-alpha
+  470  kubectl get svc ingress-nginx-controller -n platform-system
+  471  curl -H "Host: hello.team-alpha.local" http://localhost:30080
+  472  curl -H "Host: hello.team-alpha.local" http://localhost:30429
+  473  kubectl get svc ingress-nginx-controller -n platform-system
+  474  curl -H "Host: hello.team-alpha.local" http://localhost:32116
+  475  curl -H "Host: hello.team-alpha.local" http://localhost:30429
+  476  cldear
+  477  clear
+  478  kubectl get pods -n team-alpha
+  479  kubectl get ingress -n team-alpha
+  480  curl -H "Host: hello.team-alpha.local" http://localhost:30080
+  481  clear
+  482  kubectl apply -f platform/gitops/apps/team-alpha-hello.yaml
+  483  kubectl get applications -n platform-system
+  484  kubectl get pods -n team-alpha
+  485  kubectl get ingress -n team-alpha
+  486  clear
+  487  kubectl get pods -n team-alpha
+  488  kubectl get svc -n team-alpha
+  489  kubectl get ingress -n team-alpha
+  490  sudo nano /etc/hosts
+  491  kubectl get svc ingress-nginx-controller -n platform-system
+  492  curl -H "Host: hello.team-alpha.local" http://localhost:30429
+  493  curl -H "Host: hello.team-alpha.local" http://localhost:80
+  494  clear
+  495  curl -H "Host: hello.team-alpha.local" http://localhost:8081
+  496  curl -H "Host: hello.team-alpha.local" http://localhost:8080
+  497  clear
+  498  kubectl -n platform-system port-forward svc/ingress-nginx-controller 8080:80
+  499  clear
+  500  curl -H "Host: hello.team-alpha.local" http://localhost:8080
+  501  kubectl get applications -n platform-system
+  502  kubectl apply -f platform/gitops/apps/team-beta-hello.yaml
+  503  kubectl get applications -n platform-system
+  504  curl -H "Host: hello.team-alpha.local" http://localhost:8080
+  505  curl -H "Host: hello.team-beta.local"  http://localhost:8080
+  506  git status
+  507  git add .
+  508  git diff --cached
+  509  git commit -m "Stabilize dev platform: decouple cluster lifecycle from Terraform and finalize GitOps-based setup"
+  510  git push origin main
+  511  cd ~/ecps   # adjust if your repo lives elsewhere
+  512  git rev-parse --show-toplevel
+  513  git status
+  514  git remote -v
+  515  git branch --show-current
+  516  cat >> .gitignore <<'EOF'
+
+# --- ECPS local lab ignores ---
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+terraform.tfvars
+*.tfvars
+*.tfvars.json
+
+# kube / kind local artifacts
+kubeconfig
+kubeconfig-*
+**/kubeconfig
+.kube/
+
+# logs / temp
+*.log
+tmp/
+.DS_Store
+EOF
+
+  517  cd docs
+  518  mkdir -p docs/notes
+  519  cat > docs/notes/local-lab-conventions.md <<'EOF'
+# ECPS Local Lab Conventions (kind on Ubuntu)
+
+## Fixed port-forwards (avoid collisions)
+- Ingress NGINX:
+  kubectl -n platform-system port-forward svc/ingress-nginx-controller 8080:80
+- Argo CD:
+  kubectl -n platform-system port-forward svc/argocd-server 8081:80
+- Grafana:
+  kubectl -n platform-observability port-forward svc/kube-prometheus-stack-grafana 3000:80
+
+Rule: never reuse the same local port for different port-forwards.
+
+## /etc/hosts entries (keep both)
+127.0.0.1 hello.team-alpha.local
+127.0.0.1 hello.team-beta.local
+
+## kind NodePort gotcha
+NodePorts are not reliably reachable on localhost in kind unless you set explicit port mappings.
+Default approach: use port-forward for ingress.
+
+## NetworkPolicy reality check
+NetworkPolicy enforcement depends on the CNI.
+If policies appear “ignored”, do not assume your YAML/TF is wrong—verify the CNI supports enforcement.
+EOF
+
+  520  git add -A
+  521  git status
+  522  git diff --cached
+  523  git commit -m "chore: snapshot current ECPS state + local lab conventions"
+  524  git push -u origin main
+  525  clear
+  526  cd
+  527  cd ecps
+  528  clear
+  529  git rev-parse --show-toplevel
+  530  docker ps >/dev/null && echo "docker ok" || echo "docker NOT ok"
+  531  kind get clusters
+  532  kubectl config get-contexts
+  533  kubectl config current-context
+  534  kubectl cluster-info
+  535  kubectl get nodes -o wide
+  536  kubectl config use-context kind-ecps-dev
+  537  kubectl config current-context
+  538  kubectl get ns
+  539  kubectl -n platform-system get pods
+  540  kubectl -n platform-observability get pods
+  541  clear
+  542  curl -s -H "Host: hello.team-alpha.local" http://localhost:8080 ; echo
+  543  curl -s -H "Host: hello.team-beta.local"  http://localhost:8080 ; echo
+  544  curl -s -H "Host: hello.team-alpha.local" http://localhost:8080 ; echo
+  545  curl -s -H "Host: hello.team-beta.local"  http://localhost:8080 ; echo
+  546  curl -s -H "Host: hello.team-alpha.local" http://localhost:8080 ; echo
+  547  curl -s -H "Host: hello.team-beta.local"  http://localhost:8080 ; echo
+  548  nano docs/runbooks/hello-app-outage.md
+  549  kubectl apply -f sre/alerts/hello-app-alerts.yaml
+  550  nano sre/alerts/hello-app-alerts.yaml
+  551  kubectl apply -f sre/alerts/hello-app-alerts.yaml
+  552  kubectl -n platform-observability get prometheusrule
+  553  kubectl -n platform-observability describe prometheusrule hello-app-alerts
+  554  clear
+  555  kubectl config current-context
+  556  curl -s -H "Host: hello.team-alpha.local" http://localhost:8080/
+  557  kubectl -n team-alpha scale deployment hello-app --replicas=0
+  558  kubectl -n team-alpha get pods
+  559  kubectl -n team-alpha scale deployment hello-app --replicas=0
+  560  kubectl -n team-alpha get pods
+  561  clear
+  562  kubectl -n team-alpha get pods
+  563  git status
+  564  git add apps/team-alpha/hello-app/manifests/deployment.yaml
+  565  git commit -m "simulate outage: scale team-alpha hello-app to 0 replicas"
+  566  git push
+  567  kubectl -n team-alpha get deployment hello-app
+  568  kubectl -n team-alpha get pods
+  569  cd ~/ecps
+  570  git add apps/team-alpha/hello-app/manifests/deployment.yaml
+  571  git commit -m "incident simulation: scale team-alpha hello-app to zero"
+  572  git push
+  573  clear
+  574  cd ~/ecps
+  575  grep -n "replicas" apps/team-alpha/hello-app/manifests/deployment.yaml
+  576  git status
+  577  git diff apps/team-alpha/hello-app/manifests/deployment.yaml
+  578  git add   apps/team-alpha/hello-app/manifests/deployment.yaml   sre/alerts/hello-app-alerts.yaml   sre/slos/hello-app-availability.md
+  579  git status
+  580  git commit -m "incident simulation: scale team-alpha hello-app to zero + add SRE artifacts"
+  581  git push
+  582  kubectl -n team-alpha get deployment hello-app
+  583  kubectl -n team-alpha get pods
+  584  curl -v -H "Host: hello.team-alpha.local" http://localhost:8080/
+  585  curl -s -H "Host: hello.team-beta.local" http://localhost:8080/
+  586  kubectl -n platform-observability get prometheusrule hello-app-alerts
+  587  kubectl -n platform-observability describe prometheusrule hello-app-alerts
+  588  cd ~/ecps
+  589  nano sre/alerts/hello-app-alerts.yaml
+  590  kubectl apply -f sre/alerts/hello-app-alerts.yaml
+  591  kubectl -n platform-observability get prometheusrule hello-app-alerts
+  592  clear
+  593  kubectl -n platform-observability get prometheusrule hello-app-alerts
+  594  kubectl -n platform-observability describe prometheusrule hello-app-alerts
+  595  clear
+  596  git add apps/team-alpha/hello-app/manifests/deployment.yaml
+  597  git commit -m "restore: team-alpha hello-app replicas back to 1"
+  598  git push
+  599  clear
+  600  kubectl -n team-alpha get deployment hello-app
+  601  kubectl -n team-alpha get pods
+  602  kubectl -n team-alpha get deployment hello-app
+  603  clear
+  604  kubectl -n team-alpha get deployment hello-app
+  605  kubectl -n team-alpha get pods
+  606  grep -n "replicas" apps/team-alpha/hello-app/manifests/deployment.yaml
+  607  git status
+  608  git add apps/team-alpha/hello-app/manifests/deployment.yaml
+  609  git commit -m "restore: team-alpha hello-app replicas back to 1"
+  610  git push
+  611  kubectl -n team-alpha get deployment hello-app
+  612  kubectl -n team-alpha get pods
+  613  curl -s -H "Host: hello.team-alpha.local" http://localhost:8080/
+  614  curl -s -H "Host: hello.team-beta.local"  http://localhost:8080/
+  615  clear
+  616  mkdir -p platform/idp/k8s-rbac
+  617  nano platform/idp/k8s-rbac/team-alpha-rbac.yaml
+  618  kubectl apply -f platform/idp/k8s-rbac/team-alpha-rbac.yaml
+  619  kubectl -n team-alpha get role,rolebinding
+  620  nano platform/idp/k8s-rbac/team-beta-rbac.yaml
+  621  kubectl apply -f platform/idp/k8s-rbac/team-beta-rbac.yaml
+  622  kubectl -n team-beta get role,rolebinding
+  623  nano platform/idp/k8s-rbac/platform-admin-rbac.yaml
+  624  kubectl apply -f platform/idp/k8s-rbac/platform-admin-rbac.yaml
+  625  kubectl get clusterrole platform-admin
+  626  kubectl get clusterrolebinding platform-admin-binding
+  627  git add platform/idp/k8s-rbac/team-alpha-rbac.yaml         platform/idp/k8s-rbac/team-beta-rbac.yaml         platform/idp/k8s-rbac/platform-admin-rbac.yaml
+  628  git commit -m "idp: add per-team RBAC and platform-admin clusterrole"
+  629  git push
+  630  nano docs/architecture/README.md
+  631  nano docs/adr/ADR-001-use-kind-for-local-kubernetes.md
+  632  nano docs/adr/ADR-002-gitops-as-source-of-truth.md
+  633  nano docs/adr/ADR-003-prometheus-native-alerting.md
+  634  git add docs/architecture/README.md         docs/adr/ADR-001-use-kind-for-local-kubernetes.md         docs/adr/ADR-002-gitops-as-source-of-truth.md         docs/adr/ADR-003-prometheus-native-alerting.md
+  635  git commit -m "docs: add architecture overview and core ADRs"
+  636  git push
+  637  clear
+  638  cd ~/ecps
+  639  # Make sure dev env is clean in Git (no surprise edits)
+  640  git status
+  641  cd ~/ecps
+  642  # Ensure stage folder exists
+  643  mkdir -p infra/envs/stage
+  644  # Clone dev env into stage, excluding state files
+  645  rsync -av   infra/envs/dev/   infra/envs/stage/   --exclude='terraform.tfstate'   --exclude='terraform.tfstate.backup'
+  646  ls infra/envs/stage
+  647  cd ~/ecps
+  648  # Rename config file inside stage env
+  649  mv infra/envs/stage/ecps-dev-config infra/envs/stage/ecps-stage-config
+  650  # Sanity check
+  651  ls infra/envs/stage
+  652  # ecps-stage-config  main.tf  gitops-argocd.tf  ingress-nginx.tf  ...
+  653  cd ~/ecps
+  654  # 3.1: Make sure stage main.tf refers to ecps-stage-config instead of ecps-dev-config
+  655  sed -i 's/ecps-dev-config/ecps-stage-config/g' infra/envs/stage/main.tf
+  656  # 3.2: Update any literal cluster name references ecps-dev → ecps-stage
+  657  sed -i 's/ecps-dev/ecps-stage/g' infra/envs/stage/*.tf
+  658  # 3.3: Update Kubernetes provider context from kind-ecps-dev → kind-ecps-stage
+  659  sed -i 's/kind-ecps-dev/kind-ecps-stage/g' infra/envs/stage/*.tf
+  660  cat > infra/envs/stage/ecps-stage-config << 'EOF'
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ecps-stage
+
+nodes:
+  - role: control-plane
+  - role: worker
+EOF
+
+  661  cd ~/ecps/infra/envs/stage
+  662  # Create stage cluster using the new config
+  663  kind create cluster --name ecps-stage --config ecps-stage-config
+  664  # Confirm contexts and nodes
+  665  kubectl config get-contexts
+  666  kubectl config use-context kind-ecps-stage
+  667  kubectl get nodes -o wide
+  668  clear
+  669  kind delete cluster --name ecps-stage || true
+  670  kind get cluster
+  671  clear
+  672  kind delete cluster --name ecps-stage || true
+  673  cd ~/ecps
+  674  cat > infra/envs/stage/ecps-stage-config << 'EOF'
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ecps-stage
+
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.29.2
+  - role: worker
+    image: kindest/node:v1.29.2
+EOF
+
+  675  cd ~/ecps/infra/envs/stage
+  676  kind create cluster --name ecps-stage --config ecps-stage-config
+  677  kind delete cluster --name ecps-stage || true
+  678  cd ~/ecps
+  679  # Overwrite stage config with the *exact* dev config
+  680  cp infra/envs/dev/ecps-dev-config infra/envs/stage/ecps-stage-config
+  681  cd ~/ecps/infra/envs/stage
+  682  kind create cluster --name ecps-stage --config ecps-stage-config
+  683  kind delete cluster --name ecps-stage || true
+  684  cd ~/ecps/infra/envs/stage
+  685  # Remove the bad kubeconfig copy
+  686  rm -f ecps-stage-config
+  687  cd ~/ecps/infra/envs/stage
+  688  kind create cluster --name ecps-stage
+  689  clear
+  690  history
+  691  history -w my_history_with_timestamps.txt
+  692  clear
+  693  cd
+  694  cd ecps
+  695  git --version
+  696  docker --version
+  697  kubectl version --client
+  698  kind version
+  699  terraform version
+  700  helm version
+  701  kind create cluster --name ecps-stage
+  702  kind delete cluster --name ecps-stage || true
+  703  cd ~/ecps
+  704  cat > kind-ecps-stage.yaml << 'EOF'
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ecps-stage
+
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.29.2
+  - role: worker
+    image: kindest/node:v1.29.2
+EOF
+
+  705  kind create cluster --config kind-ecps-stage.yaml
+  706  kind delete cluster --name ecps-stage || true
+  707  docker ps -a | grep ecps-stage || echo "no stage containers"
+  708  # 1) inotify limits – needed by systemd / kubelet / journald
+  709  sudo sysctl -w fs.inotify.max_user_watches=524288
+  710  sudo sysctl -w fs.inotify.max_user_instances=512
+  711  # 2) vm.max_map_count – plenty of virtual memory maps for processes inside nodes
+  712  sudo sysctl -w vm.max_map_count=262144
+  713  sudo bash -c 'cat >/etc/sysctl.d/99-ecps-kind-tuning.conf <<EOF
+fs.inotify.max_user_watches = 524288
+fs.inotify.max_user_instances = 512
+vm.max_map_count = 262144
+EOF'
+  714  sudo sysctl --system
+  715  docker info | egrep 'Cgroup|Rootless'
+  716  cat > kind-ecps-stage.yaml << 'EOF'
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ecps-stage
+
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.29.2
+EOF
+
+  717  kind create cluster --config kind-ecps-stage.yaml
+  718  kubectl config get-contexts
+  719  kubectl config use-context kind-ecps-stage
+  720  kubectl get nodes -o wide
+  721  clear
+  722  cd ~/ecps
+  723  cat > infra/envs/stage/ecps-stage-cluster.yaml << 'EOF'
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ecps-stage
+
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.29.2
+EOF
+
+  724  cd ~/ecps/infra/envs/stage
+  725  # Create stage cluster from the proper kind config
+  726  kind create cluster --config ecps-stage-cluster.yaml
+  727  # Confirm context and nodes
+  728  kubectl config get-contexts
+  729  kubectl config use-context kind-ecps-stage
+  730  kubectl get nodes -o wide
+  731  clear
+  732  kubectl config get-contexts
+  733  kubectl config use-context kind-ecps-stage
+  734  kubectl get nodes -o wide
+  735  cd ~/ecps/infra/envs/stage
+  736  # Export kubeconfig for stage cluster into a dedicated file
+  737  kind get kubeconfig --name ecps-stage > ecps-stage-config
+  738  cd ~/ecps
+  739  # Replace the kubeconfig file name in stage main.tf
+  740  sed -i 's/ecps-dev-config/ecps-stage-config/g' infra/envs/stage/main.tf
+  741  # Replace cluster name references ecps-dev → ecps-stage
+  742  sed -i 's/ecps-dev/ecps-stage/g' infra/envs/stage/*.tf
+  743  # Replace k8s provider context kind-ecps-dev → kind-ecps-stage
+  744  sed -i 's/kind-ecps-dev/kind-ecps-stage/g' infra/envs/stage/*.tf
+  745  grep -R "ecps-dev" infra/envs/stage || echo "no ecps-dev references in stage"
+  746  grep -R "kind-ecps-dev" infra/envs/stage || echo "no kind-ecps-dev references in stage"
+  747  grep -R "ecps-dev-config" infra/envs/stage || echo "no ecps-dev-config references in stage"
+  748  clear
+  749  cd ~/ecps
+  750  # Replace the kubeconfig file name in stage main.tf
+  751  sed -i 's/ecps-dev-config/ecps-stage-config/g' infra/envs/stage/main.tf
+  752  # Replace cluster name references ecps-dev → ecps-stage
+  753  sed -i 's/ecps-dev/ecps-stage/g' infra/envs/stage/*.tf
+  754  # Replace k8s provider context kind-ecps-dev → kind-ecps-stage
+  755  sed -i 's/kind-ecps-dev/kind-ecps-stage/g' infra/envs/stage/*.tf
+  756  grep -R "ecps-dev" infra/envs/stage || echo "no ecps-dev references in stage"
+  757  grep -R "kind-ecps-dev" infra/envs/stage || echo "no kind-ecps-dev references in stage"
+  758  grep -R "ecps-dev-config" infra/envs/stage || echo "no ecps-dev-config references in stage"
+  759  cd ~/ecps/infra/envs/stage
+  760  # Make sure context is set correctly (good habit)
+  761  kubectl config use-context kind-ecps-stage
+  762  terraform init
+  763  terraform apply
+  764  kubectl get ns
+  765  kubectl -n platform-system get pods
+  766  kubectl -n platform-observability get pods
+  767  kubectl -n team-alpha get pods
+  768  kubectl -n team-beta get pods
+  769  nano infra/envs/stage/main.tf
+  770  cd ~/ecps
+  771  clear
+  772  cd ~/ecps
+  773  cp infra/envs/stage/main.tf infra/envs/stage/main.tf.backup
+  774  cp infra/envs/dev/main.tf infra/envs/stage/main.tf
+  775  # Replace dev kubeconfig filename with stage kubeconfig filename
+  776  sed -i 's/ecps-dev-config/ecps-stage-config/g' infra/envs/stage/*.tf
+  777  # Replace cluster name ecps-dev → ecps-stage
+  778  sed -i 's/ecps-dev/ecps-stage/g' infra/envs/stage/*.tf
+  779  # Replace k8s context kind-ecps-dev → kind-ecps-stage
+  780  sed -i 's/kind-ecps-dev/kind-ecps-stage/g' infra/envs/stage/*.tf
+  781  grep -R "ecps-dev" infra/envs/stage || echo "no ecps-dev references in stage"
+  782  grep -R "kind-ecps-dev" infra/envs/stage || echo "no kind-ecps-dev references in stage"
+  783  grep -R "ecps-dev-config" infra/envs/stage || echo "no ecps-dev-config references in stage"
+  784  rm infra/envs/stage/ecps-stage-cluster.yaml 2>/dev/null || true
+  785  # This only deletes the stage cluster, dev stays untouched
+  786  kind delete cluster --name ecps-stage
+  787  # Optionally remove the stale context from your kubeconfig
+  788  kubectl config delete-context kind-ecps-stage 2>/dev/null || true
+  789  cd ~/ecps/infra/envs/stage
+  790  terraform init
+  791  terraform apply
+  792  clear
+  793  cd ~/ecps
+  794  mkdir -p infra/clusters/stage
+  795  nano infra/clusters/stage/main.tf
+  796  cd ~/ecps/infra/clusters/stage
+  797  terraform init
+  798  terraform apply
+  799  kubectl config get-contexts
+  800  kubectl config use-context kind-ecps-stage
+  801  kubectl get nodes -o wide
+  802  cd ~/ecps/infra/envs/stage
+  803  kind get kubeconfig --name ecps-stage > ecps-stage-config
+  804  ls
+  805  cd ~/ecps/infra/envs/stage
+  806  # If you are okay reprovisioning everything in stage from scratch:
+  807  rm -f terraform.tfstate terraform.tfstate.backup
+  808  cd ~/ecps/infra/envs/stage
+  809  terraform init
+  810  terraform apply
+  811  clear
+  812  kubectl config use-context kind-ecps-stage
+  813  kubectl get ns
+  814  kubectl -n platform-system get pods
+  815  kubectl -n platform-observability get pods
+  816  kubectl -n team-alpha get pods
+  817  kubectl -n team-beta get pods
+  818  cd ~/ecps
+  819  kubectl apply -n team-alpha -f apps/team-alpha/hello-app/manifests/
+  820  kubectl apply -n team-beta  -f apps/team-beta/hello-app/manifests/
+  821  kubectl config use-context kind-ecps-stage
+  822  # Ingress
+  823  kubectl -n platform-system   port-forward svc/ingress-nginx-controller 8082:80
+  824  # Argo CD
+  825  kubectl -n platform-system   port-forward svc/argocd-server 8083:80
+  826  # Grafana
+  827  kubectl -n platform-observability   port-forward svc/kube-prometheus-stack-grafana 3001:80
+  828  # Prometheus
+  829  kubectl -n platform-observability   port-forward svc/kube-prometheus-stack-prometheus 9091:9090
+  830  clear
+  831  # DEV
+  832  kubectl config use-context kind-ecps-dev
+  833  curl -s -H "Host: hello.team-alpha.local" http://localhost:8080/ ; echo
+  834  # STAGE
+  835  kubectl config use-context kind-ecps-stage
+  836  curl -s -H "Host: hello.team-alpha.local" http://localhost:8082/ ; echo
+  837  git status
+  838  echo "infra/envs/stage/ecps-stage-config" >> .gitignore
+  839  git add infra/clusters/stage infra/envs/stage .gitignore
+  840  git commit -m "Add Terraform-managed ecps-stage cluster and stage env stack"
+  841  git push
+  842  cd ~/ecps
+  843  mkdir -p sre/alerts
+  844  cat > sre/alerts/hello-app-alerts-stage.yaml << 'EOF'
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hello-app-alerts-stage
+  namespace: platform-observability
+  labels:
+    app.kubernetes.io/name: kube-prometheus-stack
+    app.kubernetes.io/instance: kube-prometheus-stack
+    role: alert-rules
+    ecps.env: stage
+spec:
+  groups:
+    - name: hello-app-availability-stage
+      rules:
+        - alert: HelloAppUnavailableWarningStage
+          expr: kube_deployment_status_replicas_available{
+                  namespace="team-alpha",
+                  deployment="hello-app"
+                } < 1
+          # Stage is stricter: only 1 minute of downtime before warning
+          for: 1m
+          labels:
+            severity: warning
+            env: stage
+            service: hello-app
+          annotations:
+            summary: "Stage: hello-app not available (team-alpha)"
+            description: "In stage, hello-app deployment in team-alpha has no available replicas for more than 1 minute."
+
+        - alert: HelloAppUnavailableCriticalStage
+          expr: kube_deployment_status_replicas_available{
+                  namespace="team-alpha",
+                  deployment="hello-app"
+                } < 1
+          # Stage is even stricter: 3m for critical (dev might be 10m+)
+          for: 3m
+          labels:
+            severity: critical
+            env: stage
+            service: hello-app
+          annotations:
+            summary: "Stage CRITICAL: hello-app down (team-alpha)"
+            description: "In stage, hello-app deployment in team-alpha has had no available replicas for more than 3 minutes."
+EOF
+
+  845  cd ~/ecps
+  846  # Use stage context
+  847  kubectl config use-context kind-ecps-stage
+  848  # Apply the new alert rule
+  849  kubectl apply -f sre/alerts/hello-app-alerts-stage.yaml
+  850  # Verify it is registered
+  851  kubectl -n platform-observability get prometheusrule
+  852  kubectl -n platform-observability describe prometheusrule hello-app-alerts-stage
+  853  clear
+  854  cd ~/ecps
+  855  mkdir -p apps/team-alpha/hello-app/envs/dev
+  856  mkdir -p apps/team-alpha/hello-app/envs/stage
+  857  mv apps/team-alpha/hello-app/manifests/* apps/team-alpha/hello-app/envs/dev/
+  858  cat > apps/team-alpha/hello-app/manifests/README.md << 'EOF'
+This directory is intentionally left empty.
+
+Use env-specific paths instead:
+- envs/dev/   : manifests for dev environment
+- envs/stage/ : manifests for stage environment
+
+Argo CD Applications should point to the appropriate env path, not this directory.
+EOF
+
+  859  cp -R apps/team-alpha/hello-app/envs/dev/* apps/team-alpha/hello-app/envs/stage/
+  860  cd ~/ecps
+  861  cat > platform/gitops/dev/hello-app-team-alpha.yaml << 'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hello-app-team-alpha-dev
+  namespace: platform-system
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thunderbolt-ops/ecps.git
+    targetRevision: main
+    path: apps/team-alpha/hello-app/envs/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: team-alpha
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+EOF
+
+  862  cd ~/ecps
+  863  cat > platform/gitops/dev/hello-app-team-alpha.yaml << 'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hello-app-team-alpha-dev
+  namespace: platform-system
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thunderbolt-ops/ecps.git
+    targetRevision: main
+    path: apps/team-alpha/hello-app/envs/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: team-alpha
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+EOF
+
+  864  cat > platform/gitops/dev/hello-app-team-alpha.yaml << 'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hello-app-team-alpha-dev
+  namespace: platform-system
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thunderbolt-ops/ecps.git
+    targetRevision: main
+    path: apps/team-alpha/hello-app/envs/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: team-alpha
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+EOF
+
+  865  cat > platform/gitops/dev/hello-app-team-alpha.yaml << 'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hello-app-team-alpha-dev
+  namespace: platform-system
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thunderbolt-ops/ecps.git
+    targetRevision: main
+    path: apps/team-alpha/hello-app/envs/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: team-alpha
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+EOF
+
+  866  clear
+  867  cd ~/ecps
+  868  # 1.1 Create env folders for team-alpha hello-app
+  869  mkdir -p apps/team-alpha/hello-app/envs/dev
+  870  mkdir -p apps/team-alpha/hello-app/envs/stage
+  871  # 1.2 Move existing manifests into the dev env
+  872  mv apps/team-alpha/hello-app/manifests/* apps/team-alpha/hello-app/envs/dev/
+  873  cat > apps/team-alpha/hello-app/manifests/README.md << 'EOF'
+This directory is intentionally left empty.
+
+Use env-specific directories instead:
+- envs/dev/   : manifests for dev environment
+- envs/stage/ : manifests for stage environment
+
+Argo CD Applications should point to these env paths, not this directory.
+EOF
+
+  874  # 1.3 Stage starts identical to dev
+  875  cp -R apps/team-alpha/hello-app/envs/dev/* apps/team-alpha/hello-app/envs/stage/
+  876  cat > platform/gitops/apps/team-alpha-hello.yaml << 'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hello-app-team-alpha-dev
+  namespace: platform-system
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thunderbolt-ops/ecps.git
+    targetRevision: main
+    path: apps/team-alpha/hello-app/envs/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: team-alpha
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+EOF
+
+  877  cd ~/ecps
+  878  cat > platform/gitops/apps/team-alpha-hello-stage.yaml << 'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hello-app-team-alpha-stage
+  namespace: platform-system
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thunderbolt-ops/ecps.git
+    targetRevision: main
+    path: apps/team-alpha/hello-app/envs/stage
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: team-alpha
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+EOF
+
+  879  cd ~/ecps
+  880  kubectl config use-context kind-ecps-dev
+  881  kubectl apply -f platform/gitops/apps/team-alpha-hello.yaml
+  882  kubectl config use-context kind-ecps-stage
+  883  kubectl apply -f platform/gitops/apps/team-alpha-hello-stage.yaml
+  884  kubectl config use-context kind-ecps-dev
+  885  kubectl -n platform-system get secret argocd-initial-admin-secret   -o jsonpath="{.data.password}" | base64 --decode ; echo
+  886  kubectl config use-context kind-ecps-stage
+  887  kubectl -n platform-system get secret argocd-initial-admin-secret   -o jsonpath="{.data.password}" | base64 --decode ; echo
+  888  kubectl config use-context kind-ecps-dev
+  889  kubectl -n platform-system port-forward svc/ingress-nginx-controller 8080:80
+  890  clear
+  891  # DEV
+  892  curl -s -H "Host: hello.team-alpha.local" http://localhost:8080/ ; echo
+  893  # STAGE
+  894  curl -s -H "Host: hello.team-alpha.local" http://localhost:8082/ ; echo
+  895  git add apps/team-alpha/hello-app/envs/dev
+  896  git commit -m "feat(hello-app): change in dev"
+  897  git push
+  898  cp -R apps/team-alpha/hello-app/envs/dev/* apps/team-alpha/hello-app/envs/stage/
+  899  git add apps/team-alpha/hello-app/envs/stage
+  900  git commit -m "promote(hello-app): sync stage from dev"
+  901  git push
+  902  clear
+  903  kubectl get sc
+  904  cd ~/ecps/infra/envs/dev
+  905  terraform apply
+  906  kubectl get ns | egrep 'platform-data|platform-system|platform-observability|team-alpha|team-beta'
+  907  kubectl -n platform-data get pods,svc
+  908  kind get clusters
+  909  kubectl config current-context
+  910  kubectl get nodes -o wide
+  911  cd ~/ecps/infra/envs/dev
+  912  terraform state list | grep kind_cluster || echo "no kind_cluster in state"
+  913  terraform import 'module.cluster.kind_cluster.this' ecps-dev
+  914  clear
+  915  # switch context
+  916  kubectl config use-context kind-ecps-dev
+  917  # verify
+  918  kubectl config current-context
+  919  kubectl get nodes -o wide
+  920  # now check namespaces on *dev*
+  921  kubectl get ns | egrep 'platform-data|platform-system|platform-observability|team-alpha|team-beta' || true
+  922  # and platform-data contents on *dev*
+  923  kubectl -n platform-data get pods,svc
+  924  cldear
+  925  clear
+  926  kubectl config current-context
+  927  # kind-ecps-stage
+  928  kubectl get ns
+  929  kind get clusters
+  930  # ecps-dev
+  931  # ecps-stage
+  932  kind delete cluster --name ecps-dev
+  933  kind get clusters
+  934  cd ~/ecps/infra/envs/dev
+  935  terraform apply
+  936  clear
+  937  kind delete cluster --name ecps-dev
+  938  kind get clusters
+  939  # should show only ecps-stage
+  940  terraform state list | grep '^kubernetes_'
+  941  terraform state rm kubernetes_namespace.platform_system
+  942  terraform state rm kubernetes_namespace.platform_observability
+  943  terraform state rm kubernetes_namespace.team_alpha
+  944  terraform state rm kubernetes_namespace.team_beta
+  945  terraform state rm kubernetes_cluster_role.team_namespace_admin
+  946  terraform state rm kubernetes_cluster_role.team_namespace_readonly
+  947  terraform state list | grep '^kubernetes_' | xargs -n1 terraform state rm
+  948  terraform state list | grep '^kubernetes_' || echo "no kubernetes_* resources in state (good)"
+  949  terraform apply
+  950  clear
+  951  kind get clusters
+  952  kind create cluster --name ecps-dev --image kindest/node:v1.29.2
+  953  kind get clusters
+  954  kubectl config get-contexts
+  955  kubectl config use-context kind-ecps-dev
+  956  kubectl config current-context
+  957  # should output: kind-ecps-dev
+  958  kubectl get ns
+  959  # should at least show kube-system, kube-public, etc. (fresh kind cluster)
+  960  cd ~/ecps/infra/envs/dev
+  961  terraform state list | grep kind_cluster || echo "no kind_cluster in state (good)"
+  962  export KUBECONFIG=$HOME/.kube/config
+  963  cd ~/ecps/infra/envs/dev
+  964  terraform init
+  965  terraform apply
+  966  kubectl config use-context kind-ecps-dev
+  967  kubectl get ns
+  968  kubectl -n platform-system get pods
+  969  kubectl -n platform-observability get pods
+  970  kubectl -n team-alpha get deploy,svc,ingress
+  971  kubectl -n team-beta  get deploy,svc,ingress
+  972  # 1) Dev cluster exists and is active
+  973  kind get clusters
+  974  kubectl config use-context kind-ecps-dev
+  975  kubectl cluster-info
+  976  # 2) Terraform dev sees no kind_cluster in state
+  977  cd ~/ecps/infra/envs/dev
+  978  terraform state list | grep kind_cluster || echo "no kind_cluster in state"
+  979  # 3) Providers are using kind-ecps-dev
+  980  # (sanity check via successful apply)
+  981  terraform apply
+  982  kubectl -n platform-system get applications.argoproj.io
+  983  # or shorthand if CRD is aliased:
+  984  kubectl -n platform-system get applications
+  985  cd ~/ecps
+  986  # Find all YAML/YML files and search for 'kind: Application'
+  987  find . -type f \( -name '*.yaml' -o -name '*.yml' \) -print0   | xargs -0 grep -nE 'kind:[[:space:]]+Application'   || echo "No Argo CD Application manifests found."
+  988  cd ~/ecps
+  989  # Search for hello-app / team-alpha / team-beta references
+  990  grep -RInE 'hello-app|hello.team-alpha.local|hello.team-beta.local' .   || echo "No hello-app/team-alpha/team-beta references found."
+  991  clear
+  992  kubectl config use-context kind-ecps-dev
+  993  kubectl config current-context
+  994  # should show: kind-ecps-dev
+  995  cd ~/ecps
+  996  kubectl -n platform-system apply -f platform/gitops/apps/team-alpha-hello.yaml
+  997  kubectl -n platform-system apply -f platform/gitops/apps/team-beta-hello.yaml
+  998  kubectl -n platform-system get applications.argoproj.io
+  999  # or
+ 1000  kubectl -n platform-system get applications
+ 1001  clear
+ 1002  kubectl -n platform-system get applications
+ 1003  clear
+ 1004  kubectl -n platform-system get applications
+ 1005  kubectl config use-context kind-ecps-stage
+ 1006  kubectl -n platform-system get secret argocd-initial-admin-secret   -o jsonpath="{.data.password}" | base64 --decode ; echo
+ 1007  kubectl config use-context kind-ecps-dev
+ 1008  kubectl -n platform-system get secret argocd-initial-admin-secret   -o jsonpath="{.data.password}" | base64 --decode ; echo
+ 1009  clear
+ 1010  kubectl -n platform-system get applications
+ 1011  kubectl -n team-alpha get deploy,svc,ingress
+ 1012  kubectl -n team-beta  get deploy,svc,ingress
+ 1013  kubectl -n team-alpha get pods
+ 1014  kubectl -n team-beta  get pods
+ 1015  clear
+ 1016  nano infra/modules/platform-data/variables.tf
+ 1017  mkdir infra/modules/platform-data
+ 1018  nano infra/modules/platform-data/variables.tf
+ 1019  nano infra/modules/platform-data/main.tf
+ 1020  nano infra/modules/platform-data/outputs.tf
+ 1021  nano infra/envs/dev/platform-data.tf
+ 1022  cd ~/ecps/infra/envs/dev
+ 1023  terraform init    # once after adding the new module
+ 1024  terraform apply
+ 1025  clear
+ 1026  kubectl config use-context kind-ecps-dev
+ 1027  # 1) See if there is a StorageClass at all
+ 1028  kubectl get sc
+ 1029  # 2) See what happened to the data pods
+ 1030  kubectl get ns platform-data
+ 1031  kubectl -n platform-data get pods,pvc,events
+ 1032  clear
+ 1033  kubectl config use-context kind-ecps-dev
+ 1034  kubectl get s
+ 1035  kubectl get sc
+ 1036  kubectl get ns platform-data
+ 1037  kubectl -n platform-data get pods,pvc,events
+ 1038  clear
+ 1039  cd ~/ecps/infra/envs/dev
+ 1040  terraform apply
+ 1041  clear
+ 1042  helm -n platform-data list
+ 1043  helm -n platform-data uninstall postgresql || true
+ 1044  helm -n platform-data uninstall redis      || true
+ 1045  helm -n platform-data uninstall minio      || true
+ 1046  kubectl -n platform-data get pods,svc
+ 1047  cd ~/ecps/infra/envs/dev
+ 1048  terraform apply
+ 1049  kubectl config use-context kind-ecps-dev
+ 1050  kubectl get ns platform-data
+ 1051  kubectl -n platform-data get pods,svc
+ 1052  kubectl -n platform-data get events --sort-by=.lastTimestamp
+ 1053  clear
+ 1054  kubectl config use-context kind-ecps-dev
+ 1055  kubectl config current-context
+ 1056  # must be: kind-ecps-dev
+ 1057  kubectl get nodes -o wide
+ 1058  kubectl get ns
+ 1059  kubectl -n platform-system get pods
+ 1060  kubectl -n platform-system get applications
+ 1061  curl -H "Host: hello.team-alpha.local" http://localhost:8080
+ 1062  curl -H "Host: hello.team-beta.local"  http://localhost:8080
+ 1063  kubectl -n platform-observability get pods
+ 1064  kubectl -n team-alpha get deploy,svc,ingress,pods
+ 1065  kubectl -n team-beta get deploy,svc,ingress,pods
+ 1066  kubectl -n platform-data get deploy,svc,pods
+ 1067  clear
+ 1068  kubectl -n platform-data run dns-test --rm -it --image=busybox -- sh
+ 1069  kubectl -n platform-data get svc
+ 1070  kubectl -n platform-data get deploy,pods
+ 1071  kubectl -n platform-data run dns-test --rm -it --image=busybox -- sh
+ 1072  cd ~/ecps
+ 1073  # Find where "postgresql" Service is defined
+ 1074  grep -Rni "postgresql" infra
+ 1075  # Find where "redis-master" Service is defined
+ 1076  grep -Rni "redis-master" infra
+ 1077  clear
+ 1078  cd ~/ecps/infra/envs/dev
+ 1079  terraform plan
+ 1080  terraform apply
+ 1081  kubectl config use-context kind-ecps-dev
+ 1082  kubectl -n platform-data get svc
+ 1083  kubectl -n platform-data run dns-test --rm -it --image=busybox -- sh
+ 1084  clear
+ 1085  cd
+ 1086  cd ecps
+ 1087  nano ecps/infra/modules/platform-identity/main.tf
+ 1088  cd
+ 1089  nano ecps/infra/modules/platform-identity/main.tf
+ 1090  nano ecps/infra/envs/dev/platform-identity.tf
+ 1091  nano ecps/docs/runbooks/dev-add-keycloak-oidc.md
+ 1092  sudo nano /etc/hosts
+ 1093  cd ~/ecps/infra/envs/dev
+ 1094  terraform init
+ 1095  terraform apply
+ 1096  kubectl get ns | grep platform-identity
+ 1097  kubectl -n platform-identity get deploy,svc,pods,ingress
+ 1098  kubectl -n platform-identity get pods
+ 1099  curl -I -H "Host: keycloak.platform.local" http://localhost:8080
+ 1100  nano ecps/sre/rules/virtual-cost-rules.yaml
+ 1101  cd
+ 1102  nano ecps/sre/rules/virtual-cost-rules.yaml
+ 1103  nano ecps/infra/envs/dev/observability-finops.tf
+ 1104  nano ecps/observability/grafana/dashboards/finops-virtual-cost.json
+ 1105  nano ecps/sre/dashboards/finops-virtual-cost.json
+ 1106  nano ecps/docs/runbooks/dev-add-finops-simulation.md
+ 1107  clear
+ 1108  kube_pod_container_resource_requests_cpu_cores
+ 1109  kube_pod_container_resource_requests_memory_bytes
+ 1110  kube_pod_container_resource_requests_cpu_cores
+ 1111  clear
+ 1112  kube_pod_container_resource_requests_cpu_cores
+ 1113  kube_pod_container_resource_requests_memory_bytes
+ 1114  kubectl -n platform-observability get pods | egrep 'kube-state-metrics|NAME'
+ 1115  cd ~/ecps/infra/envs/dev
+ 1116  terraform apply
+ 1117  cd
+ 1118  cd ~/ecps/infra/envs/dev
+ 1119  terraform apply
+ 1120  ls -l ~/ecps/sre/rules/virtual-cost-rules.yaml
+ 1121  cd ~/ecps/infra/envs/dev
+ 1122  terraform apply
+ 1123  kubectl -n platform-observability get prometheusrule ecps-virtual-cost
+ 1124  kubectl -n platform-observability describe prometheusrule ecps-virtual-cost | sed -n '1,80p'
+ 1125  cd ~/ecps/infra/envs/dev
+ 1126  terraform apply --auto-approve
+ 1127  kubectl -n platform-observability get prometheusrule ecps-virtual-cost -o yaml | sed -n '1,40p'
+ 1128  cd
+ 1129  nano ecps/sre/rules/hello-app-slo-rules.yaml
+ 1130  nano ecps/infra/envs/dev/slo-hello-app.tf
+ 1131  cd ~/ecps/infra/envs/dev
+ 1132  terraform apply --auto-approve
+ 1133  kubectl -n platform-observability get prometheusrule hello-app-slo
+ 1134  kubectl -n platform-observability describe prometheusrule hello-app-slo | sed -n '1,60p'
+ 1135  cd
+ 1136  nano ecps/sre/dashboards/hello-app-alpha-slo.json
+ 1137  clear
+ 1138  cd ~/ecps
+ 1139  git remote -v
+ 1140  git branch --show-current
+ 1141  cd ~/ecps
+ 1142  git status
+ 1143  git add .
+ 1144  git diff --cached
+ 1145  git commit -m "Add dev platform data, identity, FinOps metrics and SLOs"
+ 1146  git push origin main
+ 1147  clear
+ 1148  kind get clsuters
+ 1149  clear
+ 1150  kind get clusters
+ 1151  kubectl config get-contexts
+ 1152  kubectl config current-context
+ 1153  ps aux | grep 'kubectl.*port-forward' | grep -v grep
+ 1154  ss -lptn | egrep ':8080|:8081|:3000|:9090' || true
+ 1155  kubectl get nodes -o wide
+ 1156  cd ~/ecps/infra/envs/dev
+ 1157  terraform init   # safe even if already initialized
+ 1158  terraform plan   # optional, just to see what's going to be destroyed
+ 1159  terraform destroy
+ 1160  kubectl get applications -A
+ 1161  kubectl get applicationsets -A
+ 1162  kubectl get appprojects -A
+ 1163  cd
+ 1164  kind get clusters
+ 1165  kind delete cluster --name ecps-dev
+ 1166  kind get clusters
+ 1167  kubectl config current-context
+ 1168  kubectl config use-context kind-ecps-stage
+ 1169  kubectl config current-context
+ 1170  kubectl get nodes -o wide
+ 1171  cd ~/ecps/infra/envs/stage
+ 1172  terraform init     # safe
+ 1173  terraform plan     # optional
+ 1174  terraform destroy --auto-approve
+ 1175  kind get clusters
+ 1176  kind delete cluster --name ecps-stage
+ 1177  kind get clusters
+ 1178  sudo nano /etc/hosts
+ 1179  docker ps -a
+ 1180  docker images
+ 1181  # Remove stopped containers
+ 1182  docker container prune
+ 1183  # Remove unused images
+ 1184  docker image prune -a
+ 1185  kind get clusters
+ 1186  kubectl config get-contexts
+ 1187  kubectl config delete-context kind-ecps-dev || true
+ 1188  kubectl config delete-context kind-ecps-stage || true
+ 1189  kubectl config delete-cluster kind-ecps-dev || true
+ 1190  kubectl config delete-cluster kind-ecps-stage || true
+ 1191  clear
+ 1192  cd..
+ 1193  cd
+ 1194  clear
+ 1195  sudo tee /etc/sysctl.d/99-ecps-kind-tuning.conf <<EOF
+fs.inotify.max_user_watches = 524288
+fs.inotify.max_user_instances = 512
+vm.max_map_count = 262144
+EOF
+
+ 1196  sudo sysctl --system
+ 1197  sysctl fs.inotify.max_user_watches fs.inotify.max_user_instances vm.max_map_count
+ 1198  git --version
+ 1199  curl --version
+ 1200  wget --version
+ 1201  docker --version
+ 1202  kubectl version --client
+ 1203  kind version
+ 1204  terraform version
+ 1205  helm version
+ 1206  git clone https://github.com/thunderbolt-ops/ecps.git
+ 1207  cd ~/ecps
+ 1208  git remote -v
+ 1209  ps aux | grep 'kubectl.*port-forward' | grep -v grep
+ 1210  kindkind get clsuters
+ 1211  kind get clusters
+ 1212  kind create cluster --name ecps-dev --image kindest/node:v1.29.2
+ 1213  kubectl config get-contexts
+ 1214  kubectl config use-context kind-ecps-dev
+ 1215  kubectl config current-context
+ 1216  kubectl get nodes -o wide
+ 1217  kind delete cluster --name ecps-dev
+ 1218  kind get clusters
+ 1219  # should show nothing or only other clusters, but not ecps-dev
+ 1220  nano infra/envs/dev/kind-ecps-dev.yaml
+ 1221  kind create cluster   --name ecps-dev   --image kindest/node:v1.29.2   --config ~/ecps/infra/envs/dev/kind-ecps-dev.yaml
+ 1222  kubectl get nodes -o wide
+ 1223  kubectl config use-context kind-ecps-dev
+ 1224  kubectl get nodes -o wide
+ 1225  sudo nano /etc/hosts
+ 1226  nano infra/envs/dev/providers.tf
+ 1227  history
+ 1228  grep -R "ChangeMeNow123!" infra || echo "no references in dev"
+ 1229  cd ~/ecps/infra/envs/dev
+ 1230  terraform init
+ 1231  terraform apply
+ 1232  clear
+ 1233  terraform init
+ 1234  terraform apply
+ 1235  terraform destroy
+ 1236  terraform apply a--auto-approve
+ 1237  terraform apply --auto-approve
+ 1238  kubectl get crd | grep prometheusrules.monitoring.coreos.com || echo "NO_PROMETHEUSRULE_CRD"
+ 1239  cd ~/ecps/infra/envs/dev
+ 1240  grep -R "helm_release" .
+ 1241  clear
+ 1242  cd ~/ecps/infra/envs/dev
+ 1243  # Temporarily disable the files so Terraform ignores them
+ 1244  mv observability-finops.tf observability-finops.tf.disabled
+ 1245  mv slo-hello-app.tf slo-hello-app.tf.disabled
+ 1246  terraform init   # safe
+ 1247  terraform apply -target=helm_release.kube_prometheus_stack
+ 1248  kubectl get crd | grep monitoring.coreos.com || echo "NO_MONITORING_CRDS"
+ 1249  cd ~/ecps/infra/envs/dev
+ 1250  mv observability-finops.tf.disabled observability-finops.tf
+ 1251  mv slo-hello-app.tf.disabled slo-hello-app.tf
+ 1252  cd ~/ecps/infra/envs/dev
+ 1253  terraform apply --auto-approve
+ 1254  kubectl -n platform-observability get prometheusrule
+ 1255  kubectl -n platform-system get secret argocd-initial-admin-secret   -o jsonpath="{.data.password}" | base64 -d
+ 1256  cd ..
+ 1257  kubectl -n platform-system apply -f platform/gitops/apps/team-alpha-hello.yaml
+ 1258  kubectl -n platform-system apply -f platform/gitops/apps/team-beta-hello.yaml
+ 1259  kubectl -n platform-system get applications
+ 1260  kubectl config current-context
+ 1261  kubectl get nodes -o wide
+ 1262  kubectl get ns
+ 1263  kubectl -n platform-system get pods
+ 1264  kubectl -n platform-observability get pods
+ 1265  kubectl -n platform-data get svc,deploy,pods
+ 1266  kubectl -n platform-data run dns-test --rm -it --image=busybox -- sh
+ 1267  kubectl -n platform-identity get deploy,svc,ingress,pods
+ 1268  curl -I -H "Host: keycloak.platform.local" http://localhost:8080
+ 1269  kubectl -n team-alpha get deploy,svc,ingress,pods
+ 1270  kubectl -n team-beta  get deploy,svc,ingress,pods
+ 1271  curl -s -H "Host: hello.team-alpha.local" http://localhost:8080/ ; echo
+ 1272  curl -s -H "Host: hello.team-beta.local"  http://localhost:8080/ ; echo
+ 1273  kind get clusters
+ 1274  kubectl config get-contexts
+ 1275  kubectl config current-context
+ 1276  ps aux | grep 'kubectl.*port-forward' | grep -v grep
+ 1277  ss -lptn | egrep ':8080|:8081|:3000|:9090' || true
+ 1278  kubectl get nodes -o wide
+ 1279  cd ~/ecps/infra/envs/dev
+ 1280  terraform init   # safe even if already initialized
+ 1281  terraform plan   # optional, just to see what's going to be destroyed
+ 1282  terraform destroy
+ 1283  cd..
+ 1284  cd
+ 1285  cd ecps
+ 1286  grep -R "config_path    = pathexpand("~/.kube/config")" .
+ 1287  grep -R "config_path    = pathexpand("~/.kube/config")" ecps || echo "no references in dev"
+ 1288  clear
+ 1289  tree -L 3 infra platform sre apps
+ 1290  sudo snap install tree
+ 1291  tree -L 3 infra platform sre apps
+ 1292  cd ~/ecps/infra/envs/dev
+ 1293  ls terraform.tfstate*
+ 1294  rm -f terraform.tfstate terraform.tfstate.*.backup
+ 1295  clear
+ 1296  git --version
+ 1297  curl --version
+ 1298  wget --version
+ 1299  docker --version
+ 1300  kubectl version --client
+ 1301  kind version
+ 1302  terraform version
+ 1303  helm version
+ 1304  cd
+ 1305  docker ps
+ 1306  kubectl config current-context
+ 1307  # kind-ecps-stage
+ 1308  kubectl get ns
+ 1309  kind get clusters
+ 1310  # ecps-dev
+ 1311  # ecps-stage
+ 1312  kind delete cluster --name ecps-dev
+ 1313  kind get clusters
+ 1314  docker ps
+ 1315  clear
+ 1316  kind create cluster   --name ecps-dev   --image kindest/node:v1.29.2   --config ~/ecps/infra/envs/dev/kind-ecps-dev.yaml
+ 1317  cd ecps
+ 1318  git status
+ 1319  git add .
+ 1320  git commit -m "New changes"
+ 1321  git push
+ 1322  clear
+ 1323  cd 
+ 1324  tree -L 3 ecps
+ 1325  tree -L 4 ecps
+ 1326  clear
+ 1327  tree -L 4 ecps
+ 1328  git --version
+ 1329  curl --version
+ 1330  wget --version
+ 1331  docker --version
+ 1332  kubectl version --client
+ 1333  kind version
+ 1334  terraform version
+ 1335  helm version
+ 1336  docker ps
+ 1337  kind get clusters
+ 1338  kind delete cluster --name ecps-dev
+ 1339  kind get clusters
+ 1340  docker ps
+ 1341  clear
+ 1342  tree -L 4 ecps
+ 1343  git --version
+ 1344  curl --version
+ 1345  wget --version
+ 1346  docker --version
+ 1347  kubectl version --client
+ 1348  kind version
+ 1349  terraform version
+ 1350  helm version
+ 1351  docker ps
+ 1352  sudo tee /etc/sysctl.d/99-ecps-kind-tuning.conf <<EOF
+fs.inotify.max_user_watches = 524288
+fs.inotify.max_user_instances = 512
+vm.max_map_count = 262144
+EOF
+
+ 1353  sudo sysctl --system
+ 1354  git clone https://github.com/thunderbolt-ops/ecps.git
+ 1355  cd ~/ecps
+ 1356  git remote -v
+ 1357  ps aux | grep 'kubectl.*port-forward' | grep -v grep
+ 1358  kind create cluster \   --name ecps-dev \   --image kindest/node:v1.29.2 \   --config ~/ecps/infra/envs/dev/kind-ecps-dev.yaml
+ 1359  kind create cluster --name ecps-dev --config infra/envs/dev/kind-ecps-dev.yaml
+ 1360  kubectl config get-contexts
+ 1361  kubectl config use-context kind-ecps-dev
+ 1362  kubectl config current-context  # should be kind-ecps-dev
+ 1363  kubectl get nodes -o wide
+ 1364  sudo nano /etc/hosts
+ 1365  kubectl get crd | grep prometheusrules.monitoring.coreos.com || echo "NO_PROMETHEUSRULE_CRD"
+ 1366  cd ~/ecps/infra/envs/dev
+ 1367  terraform apply -target=helm_release.kube_prometheus_stack
+ 1368  cd ~/ecps/infra/envs/dev
+ 1369  terraform init
+ 1370  terraform apply --auto-approve
+ 1371  kubectl -n platform-system apply -f platform/gitops/apps/team-alpha-hello.yaml
+ 1372  kubectl -n platform-system apply -f platform/gitops/apps/team-beta-hello.yaml
+ 1373  kubectl -n platform-system get applications
+ 1374  cd ..
+ 1375  kubectl -n platform-system apply -f platform/gitops/apps/team-alpha-hello.yaml
+ 1376  kubectl -n platform-system apply -f platform/gitops/apps/team-beta-hello.yaml
+ 1377  kubectl -n platform-system get applications
+ 1378  kubectl -n platform-system get secret argocd-initial-admin-secret   -o jsonpath="{.data.password}" | base64 -d && echo
+ 1379  kubectl config current-context
+ 1380  kubectl get nodes -o wide
+ 1381  kubectl get ns
+ 1382  kubectl -n platform-system get pods
+ 1383  kubectl -n platform-observability get pods
+ 1384  kubectl -n platform-data get svc,deploy,pods
+ 1385  kubectl -n platform-data run dns-test --rm -it --image=busybox -- sh
+ 1386  kubectl -n platform-identity get deploy,svc,ingress,pods
+ 1387  curl -I -H "Host: keycloak.platform.local" http://localhost:8080
+ 1388  kubectl -n team-alpha get deploy,svc,ingress,pods
+ 1389  kubectl -n team-beta  get deploy,svc,ingress,pods
+ 1390  curl -s -H "Host: hello.team-alpha.local" http://localhost:8080/ ; echo
+ 1391  curl -s -H "Host: hello.team-beta.local"  http://localhost:8080/ ; echo
+ 1392  history > history.txt

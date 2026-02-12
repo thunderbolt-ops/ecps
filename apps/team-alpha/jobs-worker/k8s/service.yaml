@@ -1,10 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: jobs-worker-metrics
+  name: jobs-worker
   namespace: team-alpha
   labels:
     app: jobs-worker
+    team: team-alpha
 spec:
   selector:
     app: jobs-worker
@@ -12,3 +13,4 @@ spec:
     - name: metrics
       port: 8001
       targetPort: 8001
+

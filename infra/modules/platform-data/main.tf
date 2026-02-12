@@ -32,10 +32,18 @@ resource "kubernetes_deployment" "postgres" {
       spec {
         container {
           name  = "postgres"
-          image = "postgres:16-alpine"
+
+          # Pin image version — never use implicit latest
+          image = "postgres:16.2-alpine"
 
           port {
             container_port = 5432
+          }
+
+          # REQUIRED for automatic DB bootstrap
+          env {
+            name  = "POSTGRES_USER"
+            value = "postgres"
           }
 
           env {
@@ -43,11 +51,20 @@ resource "kubernetes_deployment" "postgres" {
             value = var.postgres_password
           }
 
-          # For dev: simple, no persistent volume
+          env {
+            name  = "POSTGRES_DB"
+            value = "billing"
+          }
+
+          # Dev-only lightweight resources
           resources {
             requests = {
               cpu    = "20m"
               memory = "64Mi"
+            }
+            limits = {
+              cpu    = "200m"
+              memory = "256Mi"
             }
           }
         }
@@ -116,13 +133,14 @@ resource "kubernetes_deployment" "redis" {
       spec {
         container {
           name  = "redis"
-          image = "redis:7-alpine"
+
+          # 🔒 Pin version
+          image = "redis:7.2-alpine"
 
           port {
             container_port = 6379
           }
 
-          # Disable persistence for dev (memory-only)
           command = ["redis-server"]
           args    = ["--appendonly", "no"]
 
@@ -130,6 +148,10 @@ resource "kubernetes_deployment" "redis" {
             requests = {
               cpu    = "10m"
               memory = "32Mi"
+            }
+            limits = {
+              cpu    = "100m"
+              memory = "128Mi"
             }
           }
         }
@@ -198,9 +220,10 @@ resource "kubernetes_deployment" "minio" {
       spec {
         container {
           name  = "minio"
-          image = "minio/minio:latest"
 
-          # API on :9000, console on :9001
+          # 🔒 Pin version
+          image = "minio/minio:RELEASE.2024-01-13T07-53-03Z"
+
           args = ["server", "/data", "--console-address", ":9001"]
 
           port {
@@ -225,6 +248,10 @@ resource "kubernetes_deployment" "minio" {
             requests = {
               cpu    = "20m"
               memory = "64Mi"
+            }
+            limits = {
+              cpu    = "200m"
+              memory = "256Mi"
             }
           }
         }

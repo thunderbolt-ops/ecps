@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jobs-worker
+  namespace: team-alpha
   labels:
     app: jobs-worker
     team: team-alpha
@@ -20,9 +21,7 @@ spec:
         - name: jobs-worker
           image: ecps-jobs-worker:0.1.0
           imagePullPolicy: IfNotPresent
-
           command: ["python", "-u", "main.py"]
-
           env:
             - name: PG_HOST
               value: postgres.platform-data.svc.cluster.local

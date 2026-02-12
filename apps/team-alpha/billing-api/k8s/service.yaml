@@ -7,10 +7,10 @@ metadata:
     app: billing-api
     team: team-alpha
 spec:
-  type: ClusterIP
   selector:
     app: billing-api
   ports:
     - name: http
       port: 80
-      targetPort: http
+      targetPort: 8000
+

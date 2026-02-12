@@ -1,0 +1,76 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: billing-api-slo-rules
+  namespace: platform-observability
+  labels:
+    role: slo
+    app: billing-api
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: billing-api-slo
+      rules:
+        # ---- SLI: availability over different windows ----
+
+        - record: slo:billing_api_availability_ratio5m
+          expr: |
+            1 - (
+              sum(rate(billing_api_requests_total{status=~"5.."}[5m]))
+              /
+              sum(rate(billing_api_requests_total[5m]))
+            )
+
+        - record: slo:billing_api_availability_ratio30m
+          expr: |
+            1 - (
+              sum(rate(billing_api_requests_total{status=~"5.."}[30m]))
+              /
+              sum(rate(billing_api_requests_total[30m]))
+            )
+
+        - record: slo:billing_api_availability_ratio6h
+          expr: |
+            1 - (
+              sum(rate(billing_api_requests_total{status=~"5.."}[6h]))
+              /
+              sum(rate(billing_api_requests_total[6h]))
+            )
+
+        # ---- Error budget burn (target = 99% → error budget = 0.01) ----
+
+        - record: slo:billing_api_error_budget_burn_rate5m_1h
+          expr: |
+            (1 - slo:billing_api_availability_ratio5m) / 0.01
+
+        - record: slo:billing_api_error_budget_burn_rate30m_6h
+          expr: |
+            (1 - slo:billing_api_availability_ratio30m) / 0.01
+
+        # ---- Alerts ----
+
+        - alert: BillingApiFastBurn
+          expr: slo:billing_api_error_budget_burn_rate5m_1h > 14.4
+          for: 5m
+          labels:
+            severity: critical
+            service: billing-api
+            team: team-alpha
+          annotations:
+            summary: "billing-api error budget fast burn"
+            description: >
+              billing-api is burning more than 14.4x its 30-day error budget
+              (based on 5m/1h windows).
+
+        - alert: BillingApiSlowBurn
+          expr: slo:billing_api_error_budget_burn_rate30m_6h > 6
+          for: 30m
+          labels:
+            severity: warning
+            service: billing-api
+            team: team-alpha
+          annotations:
+            summary: "billing-api error budget slow burn"
+            description: >
+              billing-api is burning more than 6x its 30-day error budget
+              (based on 30m/6h windows).

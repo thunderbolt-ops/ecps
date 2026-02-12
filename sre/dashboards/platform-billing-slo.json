@@ -1,0 +1,158 @@
+{
+  "id": null,
+  "uid": "platform-billing-slo",
+  "title": "Platform – Billing & Reporting SLO",
+  "tags": ["ecps", "team-alpha", "slo"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "billing-api – 30m availability SLO",
+      "id": 1,
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal"
+      },
+      "targets": [
+        {
+          "expr": "slo:billing_api_availability_ratio30m * 100",
+          "legendFormat": "availability %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "orange", "value": 99 },
+              { "color": "green", "value": 99.5 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "billing-api – 5m availability (SLI)",
+      "id": 2,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "slo:billing_api_availability_ratio5m * 100",
+          "legendFormat": "availability %",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "billing-api – error budget burn rate",
+      "id": 3,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "slo:billing_api_error_budget_burn_rate5m_1h",
+          "legendFormat": "fast burn (5m/1h)",
+          "refId": "A"
+        },
+        {
+          "expr": "slo:billing_api_error_budget_burn_rate30m_6h",
+          "legendFormat": "slow burn (30m/6h)",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "billing-api – traffic by path (RPS, 5m)",
+      "id": 4,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "req/s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (path) (rate(billing_api_requests_total[5m]))",
+          "legendFormat": "{{path}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "reporting-api – traffic by path (RPS, 5m)",
+      "id": 5,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "req/s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (path) (rate(reporting_api_requests_total[5m]))",
+          "legendFormat": "{{path}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"],
+    "time_options": ["5m", "15m", "1h", "6h", "12h", "24h"]
+  }
+}
