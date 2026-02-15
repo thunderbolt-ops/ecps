@@ -1,0 +1,103 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: jobs-worker-rules
+  namespace: platform-observability
+  labels:
+    role: operational
+    app: jobs-worker
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: jobs-worker-operational
+      interval: 30s
+      rules:
+        # ---- Job processing success rate ----
+
+        - record: jobs_worker:success_rate_5m
+          expr: |
+            sum(rate(jobs_worker_jobs_processed_total{status="completed"}[5m]))
+            /
+            sum(rate(jobs_worker_jobs_processed_total[5m]))
+
+        - record: jobs_worker:success_rate_1h
+          expr: |
+            sum(rate(jobs_worker_jobs_processed_total{status="completed"}[1h]))
+            /
+            sum(rate(jobs_worker_jobs_processed_total[1h]))
+
+        # ---- Operational alerts ----
+
+        - alert: JobWorkerProcessingFailure
+          expr: (1 - jobs_worker:success_rate_5m) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            service: jobs-worker
+            team: team-alpha
+          annotations:
+            summary: "Job worker processing failure rate high"
+            description: >
+              Job success rate is {{ ($value * 100) | humanize }}%
+              (threshold: 95%). Investigate failed jobs in deadletter queue.
+
+        - alert: NoJobsProcessing
+          expr: rate(jobs_worker_jobs_processed_total[5m]) == 0
+          for: 10m
+          labels:
+            severity: critical
+            service: jobs-worker
+            team: team-alpha
+          annotations:
+            summary: "No jobs being processed"
+            description: "jobs-worker has not processed any jobs in the last 10 minutes. Check worker health."
+
+        - alert: DeadletterQueueGrowing
+          expr: rate(jobs_worker_job_deadletter_total[5m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+            service: jobs-worker
+            team: team-alpha
+          annotations:
+            summary: "Jobs accumulating in deadletter queue"
+            description: >
+              {{ $value | humanize }}/sec jobs entering deadletter queue.
+              Check deadletter queue for stuck jobs.
+
+        - alert: RedisQueueDepthIncreasing
+          expr: |
+            rate(jobs_worker_redis_queue_depth[5m]) > 0
+            and
+            jobs_worker_redis_queue_depth > 50
+          for: 15m
+          labels:
+            severity: warning
+            service: jobs-api
+            team: team-alpha
+          annotations:
+            summary: "Job queue backed up"
+            description: >
+              Queue depth is {{ $value }} and increasing.
+              Scale jobs-worker replicas horizontally.
+
+        # ---- Cost tracking per job type ----
+
+        - record: jobs_worker:cost_by_type_1h
+          expr: |
+            sum by (job_type) (
+              increase(jobs_worker_job_cost_processed_total{status="completed"}[1h])
+            )
+
+        - alert: GpuJobCostHigh
+          expr: jobs_worker:cost_by_type_1h{job_type="ml_inference"} > 10
+          for: 10m
+          labels:
+            severity: info
+            service: jobs-worker
+            team: team-alpha
+          annotations:
+            summary: "GPU job cost accumulating"
+            description: >
+              Hourly GPU job cost: ${{ $value | humanize }}.
+              Monitor GPU workload utilization and optimization opportunities.

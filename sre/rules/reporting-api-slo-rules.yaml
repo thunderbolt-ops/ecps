@@ -1,0 +1,73 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: reporting-api-slo-rules
+  namespace: platform-observability
+  labels:
+    role: slo
+    app: reporting-api
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: reporting-api-slo
+      interval: 30s
+      rules:
+        # ---- SLI: availability and latency ----
+
+        - record: slo:reporting_api_availability_ratio5m
+          expr: |
+            1 - (
+              sum(rate(reporting_api_requests_total{status=~"5.."}[5m]))
+              /
+              sum(rate(reporting_api_requests_total[5m]))
+            )
+
+        - record: slo:reporting_api_availability_ratio30m
+          expr: |
+            1 - (
+              sum(rate(reporting_api_requests_total{status=~"5.."}[30m]))
+              /
+              sum(rate(reporting_api_requests_total[30m]))
+            )
+
+        # ---- Latency SLI (target: p95 < 500ms) ----
+
+        - record: slo:reporting_api_latency_p95_5m
+          expr: histogram_quantile(0.95, rate(reporting_api_request_latency_seconds_bucket[5m]))
+
+        - record: slo:reporting_api_latency_p99_5m
+          expr: histogram_quantile(0.99, rate(reporting_api_request_latency_seconds_bucket[5m]))
+
+        # ---- Error budget burn (target = 99.5%) ----
+
+        - record: slo:reporting_api_error_budget_burn_rate5m_1h
+          expr: |
+            (1 - slo:reporting_api_availability_ratio5m) / 0.005
+
+        # ---- Alerts ----
+
+        - alert: ReportingApiFastBurn
+          expr: slo:reporting_api_error_budget_burn_rate5m_1h > 14.4
+          for: 5m
+          labels:
+            severity: critical
+            service: reporting-api
+            team: team-alpha
+          annotations:
+            summary: "reporting-api error budget fast burn"
+            description: >
+              reporting-api is burning more than 14.4x its error budget
+              in 5m. Immediate page required.
+
+        - alert: ReportingApiHighLatency
+          expr: slo:reporting_api_latency_p95_5m > 0.5
+          for: 10m
+          labels:
+            severity: warning
+            service: reporting-api
+            team: team-alpha
+          annotations:
+            summary: "reporting-api latency SLO breach"
+            description: >
+              P95 latency is {{ ($value * 1000) | humanize }}ms
+              (threshold: 500ms). Investigate slow queries.
