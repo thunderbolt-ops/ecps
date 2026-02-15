@@ -7,8 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ .
 
-# 🔴 CRITICAL FIX
-ENTRYPOINT []
+ENTRYPOINT ["python","-u"]
 
-CMD ["python", "-u", "main.py"]
+CMD ["main.py"]
 

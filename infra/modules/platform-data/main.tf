@@ -2,7 +2,7 @@
 # Postgres (official image)
 #################################
 
-resource "kubernetes_deployment" "postgres" {
+resource "kubernetes_deployment_v1" "postgres" {
   count = var.postgres_enabled ? 1 : 0
 
   metadata {
@@ -73,7 +73,7 @@ resource "kubernetes_deployment" "postgres" {
   }
 }
 
-resource "kubernetes_service" "postgres" {
+resource "kubernetes_service_v1" "postgres" {
   count = var.postgres_enabled ? 1 : 0
 
   metadata {
@@ -103,7 +103,7 @@ resource "kubernetes_service" "postgres" {
 # Redis (official image)
 #################################
 
-resource "kubernetes_deployment" "redis" {
+resource "kubernetes_deployment_v1" "redis" {
   count = var.redis_enabled ? 1 : 0
 
   metadata {
@@ -160,7 +160,7 @@ resource "kubernetes_deployment" "redis" {
   }
 }
 
-resource "kubernetes_service" "redis" {
+resource "kubernetes_service_v1" "redis" {
   count = var.redis_enabled ? 1 : 0
 
   metadata {
@@ -190,7 +190,7 @@ resource "kubernetes_service" "redis" {
 # MinIO (official image)
 #################################
 
-resource "kubernetes_deployment" "minio" {
+resource "kubernetes_deployment_v1" "minio" {
   count = var.minio_enabled ? 1 : 0
 
   metadata {
@@ -260,7 +260,7 @@ resource "kubernetes_deployment" "minio" {
   }
 }
 
-resource "kubernetes_service" "minio" {
+resource "kubernetes_service_v1" "minio" {
   count = var.minio_enabled ? 1 : 0
 
   metadata {

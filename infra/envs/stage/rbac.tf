@@ -3,7 +3,7 @@
 #############################
 
 # Platform admin service account (cluster-level admin via binding)
-resource "kubernetes_service_account" "platform_admin" {
+resource "kubernetes_service_account_v1" "platform_admin" {
   metadata {
     name      = "platform-admin"
     namespace = kubernetes_namespace.platform_system.metadata[0].name
@@ -15,7 +15,7 @@ resource "kubernetes_service_account" "platform_admin" {
 }
 
 # Team Alpha namespace owner
-resource "kubernetes_service_account" "team_alpha_dev" {
+resource "kubernetes_service_account_v1" "team_alpha_dev" {
   metadata {
     name      = "team-alpha-dev"
     namespace = kubernetes_namespace.team_alpha.metadata[0].name
@@ -28,7 +28,7 @@ resource "kubernetes_service_account" "team_alpha_dev" {
 }
 
 # Team Beta namespace owner
-resource "kubernetes_service_account" "team_beta_dev" {
+resource "kubernetes_service_account_v1" "team_beta_dev" {
   metadata {
     name      = "team-beta-dev"
     namespace = kubernetes_namespace.team_beta.metadata[0].name
@@ -88,8 +88,8 @@ resource "kubernetes_cluster_role_binding" "platform_admin_cluster_admin" {
 
   subject {
     kind      = "ServiceAccount"
-    name      = kubernetes_service_account.platform_admin.metadata[0].name
-    namespace = kubernetes_service_account.platform_admin.metadata[0].namespace
+    name      = kubernetes_service_account_v1.platform_admin.metadata[0].name
+    namespace = kubernetes_service_account_v1.platform_admin.metadata[0].namespace
   }
 }
 
@@ -108,7 +108,7 @@ resource "kubernetes_role_binding" "team_alpha_admin" {
 
   subject {
     kind      = "ServiceAccount"
-    name      = kubernetes_service_account.team_alpha_dev.metadata[0].name
+    name      = kubernetes_service_account_v1.team_alpha_dev.metadata[0].name
     namespace = kubernetes_namespace.team_alpha.metadata[0].name
   }
 }
@@ -128,7 +128,7 @@ resource "kubernetes_role_binding" "team_beta_admin" {
 
   subject {
     kind      = "ServiceAccount"
-    name      = kubernetes_service_account.team_beta_dev.metadata[0].name
+    name      = kubernetes_service_account_v1.team_beta_dev.metadata[0].name
     namespace = kubernetes_namespace.team_beta.metadata[0].name
   }
 }

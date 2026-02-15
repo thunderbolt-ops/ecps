@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Get all image:tag combinations
-docker images --format "{{.Repository}}:{{.Tag}}" | while read image; do
+docker images --format "{{.Repository}}:{{.Tag}}" | while read -r image; do
     # Skip if image is empty
     [[ -z "$image" ]] && continue
     

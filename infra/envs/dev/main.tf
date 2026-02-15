@@ -33,13 +33,13 @@ module "cluster" {
 
 provider "kubernetes" {
   config_path    = pathexpand("~/.kube/config")
-  config_context = "kind-ecps-dev"
+  config_context = "kind-ecps-stage"
 }
 
 provider "helm" {
   kubernetes {
     config_path    = pathexpand("~/.kube/config")
-    config_context = "kind-ecps-dev"
+    config_context = "kind-ecps-stage"
   }
 }
 
