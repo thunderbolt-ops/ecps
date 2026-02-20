@@ -1,4 +1,6 @@
 import os
+import json
+import logging
 from datetime import datetime
 from typing import List, Dict
 
@@ -10,6 +12,34 @@ from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_
 from starlette.requests import Request
 import time
 
+# Configure structured logging
+class StructuredLogger:
+    """JSON structured logging with context."""
+    def __init__(self, service_name, team, environment):
+        self.service_name = service_name
+        self.team = team
+        self.environment = environment
+        self.logger = logging.getLogger(service_name)
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(message)s'))
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
+    
+    def log(self, level, message, **context):
+        log_context = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "service": self.service_name,
+            "team": self.team,
+            "environment": self.environment,
+            "level": level,
+            "message": message,
+        }
+        log_context.update(context)
+        self.logger.info(json.dumps(log_context))
+
+APP_TEAM = os.getenv("APP_TEAM", "team-alpha")
+APP_ENV = os.getenv("APP_ENV", "dev")
+logger = StructuredLogger("reporting-api", APP_TEAM, APP_ENV)
 
 app = FastAPI(
     title="Reporting API",

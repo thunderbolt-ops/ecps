@@ -2,6 +2,7 @@ import os
 import uuid
 import json
 import time
+import logging
 from datetime import datetime
 from typing import Optional
 
@@ -9,9 +10,38 @@ import psycopg2
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from redis import Redis
 from minio import Minio
+
+# Configure structured logging
+class StructuredLogger:
+    """JSON structured logging with context."""
+    def __init__(self, service_name, team, environment):
+        self.service_name = service_name
+        self.team = team
+        self.environment = environment
+        self.logger = logging.getLogger(service_name)
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(message)s'))
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
+    
+    def log(self, level, message, **context):
+        log_context = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "service": self.service_name,
+            "team": self.team,
+            "environment": self.environment,
+            "level": level,
+            "message": message,
+        }
+        log_context.update(context)
+        self.logger.info(json.dumps(log_context))
+
+APP_TEAM = os.getenv("APP_TEAM", "team-alpha")
+APP_ENV = os.getenv("APP_ENV", "dev")
+logger = StructuredLogger("jobs-api", APP_TEAM, APP_ENV)
 
 # --------------------------------------------------------------------
 # Environment
@@ -34,6 +64,13 @@ MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
 MINIO_BUCKET = os.getenv("MINIO_BUCKET", "jobs-results")
 
 JOB_QUEUE_KEY = os.getenv("JOB_QUEUE_KEY", "jobs:queue")
+
+# Cost model: GPU jobs cost 10x more
+COST_PER_JOB_TYPE = {
+    "analytics_report": 0.50,      # Standard computation
+    "ml_inference": 5.00,           # GPU workload (10x premium)
+    "data_simulation": 1.00,        # Medium workload
+}
 
 # --------------------------------------------------------------------
 # DB / Redis / MinIO clients
@@ -142,6 +179,19 @@ JOBS_ENQUEUED = Counter(
     ["job_type", "team"],
 )
 
+# Cost attribution metrics
+JOB_COST_TOTAL = Counter(
+    "jobs_api_job_cost_total",
+    "Total cost of jobs (USD)",
+    ["job_type", "team"],
+)
+
+QUEUE_DEPTH = Gauge(
+    "jobs_api_queue_depth",
+    "Current depth of job queue",
+    ["job_type"],
+)
+
 
 @app.middleware("http")
 async def metrics_middleware(request, call_next):
@@ -198,37 +248,47 @@ def create_job(req: JobCreateRequest):
         "to_ts": req.to_ts.isoformat() if req.to_ts else None,
     }
 
-    conn = get_pg_conn()
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO jobs (id, job_type, team, status, created_at, updated_at, parameters)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """,
-            (job_id, req.job_type, req.team, "queued", now, now, json.dumps(params)),
+    try:
+        conn = get_pg_conn()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO jobs (id, job_type, team, status, created_at, updated_at, parameters)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (job_id, req.job_type, req.team, "queued", now, now, json.dumps(params)),
+            )
+
+        # Push onto Redis queue as a simple JSON payload
+        payload = {
+            "id": job_id,
+            "job_type": req.job_type,
+            "team": req.team,
+            "parameters": params,
+        }
+        redis_client.rpush(JOB_QUEUE_KEY, json.dumps(payload))
+
+        # Track job cost
+        job_cost = COST_PER_JOB_TYPE.get(req.job_type, 0.50)
+        JOB_COST_TOTAL.labels(job_type=req.job_type, team=req.team).inc(job_cost)
+        JOBS_ENQUEUED.labels(job_type=req.job_type, team=req.team).inc()
+        
+        logger.log("info", "Job enqueued", job_id=job_id, job_type=req.job_type, 
+                   team=req.team, cost=job_cost)
+
+        return JobResponse(
+            id=job_id,
+            job_type=req.job_type,
+            team=req.team,
+            status="queued",
+            created_at=now,
+            updated_at=now,
+            parameters=params,
+            result_location=None,
         )
-
-    # Push onto Redis queue as a simple JSON payload
-    payload = {
-        "id": job_id,
-        "job_type": req.job_type,
-        "team": req.team,
-        "parameters": params,
-    }
-    redis_client.rpush(JOB_QUEUE_KEY, json.dumps(payload))
-
-    JOBS_ENQUEUED.labels(job_type=req.job_type, team=req.team).inc()
-
-    return JobResponse(
-        id=job_id,
-        job_type=req.job_type,
-        team=req.team,
-        status="queued",
-        created_at=now,
-        updated_at=now,
-        parameters=params,
-        result_location=None,
-    )
+    except Exception as e:
+        logger.log("error", "Failed to create job", error=str(e), job_type=req.job_type, team=req.team)
+        raise HTTPException(status_code=500, detail="Failed to enqueue job")
 
 
 @app.get("/api/v1/jobs/{job_id}", response_model=JobResponse)

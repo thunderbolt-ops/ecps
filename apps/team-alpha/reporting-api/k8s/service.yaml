@@ -7,10 +7,10 @@ metadata:
     app: reporting-api
     team: team-alpha
 spec:
-  type: ClusterIP
   selector:
     app: reporting-api
   ports:
     - name: http
       port: 80
-      targetPort: http
+      targetPort: 8000
+

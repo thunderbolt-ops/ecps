@@ -28,7 +28,7 @@ variable "admin_password" {
 # Service Account (optional for future RBAC)
 ###############################################
 
-resource "kubernetes_service_account" "keycloak" {
+resource "kubernetes_service_account_v1" "keycloak" {
   metadata {
     name      = "keycloak"
     namespace = var.namespace
@@ -42,7 +42,7 @@ resource "kubernetes_service_account" "keycloak" {
 # Secret for admin credentials (password only)
 ###############################################
 
-resource "kubernetes_secret" "keycloak_admin" {
+resource "kubernetes_secret_v1" "keycloak_admin" {
   metadata {
     name      = "keycloak-admin-credentials"
     namespace = var.namespace
@@ -63,7 +63,7 @@ resource "kubernetes_secret" "keycloak_admin" {
 # Deployment: Keycloak (dev mode, in-memory DB)
 ###############################################
 
-resource "kubernetes_deployment" "keycloak" {
+resource "kubernetes_deployment_v1" "keycloak" {
   metadata {
     name      = "keycloak"
     namespace = var.namespace
@@ -89,7 +89,7 @@ resource "kubernetes_deployment" "keycloak" {
       }
 
       spec {
-        service_account_name = kubernetes_service_account.keycloak.metadata[0].name
+        service_account_name = kubernetes_service_account_v1.keycloak.metadata[0].name
 
         container {
           name  = "keycloak"
@@ -115,7 +115,7 @@ resource "kubernetes_deployment" "keycloak" {
 
             value_from {
               secret_key_ref {
-                name = kubernetes_secret.keycloak_admin.metadata[0].name
+                name = kubernetes_secret_v1.keycloak_admin.metadata[0].name
                 key  = "password"
               }
             }
@@ -159,7 +159,7 @@ resource "kubernetes_deployment" "keycloak" {
 # Service: Keycloak
 ###############################################
 
-resource "kubernetes_service" "keycloak" {
+resource "kubernetes_service_v1" "keycloak" {
   metadata {
     name      = "keycloak"
     namespace = var.namespace
@@ -214,7 +214,7 @@ resource "kubernetes_ingress_v1" "keycloak" {
 
           backend {
             service {
-              name = kubernetes_service.keycloak.metadata[0].name
+              name = kubernetes_service_v1.keycloak.metadata[0].name
 
               port {
                 number = 80

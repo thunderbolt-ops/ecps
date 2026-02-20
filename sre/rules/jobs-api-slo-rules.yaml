@@ -1,0 +1,127 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: jobs-api-slo-rules
+  namespace: platform-observability
+  labels:
+    role: slo
+    app: jobs-api
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: jobs-api-slo
+      interval: 30s
+      rules:
+        # ---- SLI: availability over different windows ----
+
+        - record: slo:jobs_api_availability_ratio5m
+          expr: |
+            1 - (
+              sum(rate(jobs_api_requests_total{status=~"5.."}[5m]))
+              /
+              sum(rate(jobs_api_requests_total[5m]))
+            )
+
+        - record: slo:jobs_api_availability_ratio30m
+          expr: |
+            1 - (
+              sum(rate(jobs_api_requests_total{status=~"5.."}[30m]))
+              /
+              sum(rate(jobs_api_requests_total[30m]))
+            )
+
+        - record: slo:jobs_api_availability_ratio6h
+          expr: |
+            1 - (
+              sum(rate(jobs_api_requests_total{status=~"5.."}[6h]))
+              /
+              sum(rate(jobs_api_requests_total[6h]))
+            )
+
+        # ---- Error budget burn (target = 99.5% availability) ----
+
+        - record: slo:jobs_api_error_budget_burn_rate5m_1h
+          expr: |
+            (1 - slo:jobs_api_availability_ratio5m) / 0.005
+
+        - record: slo:jobs_api_error_budget_burn_rate30m_6h
+          expr: |
+            (1 - slo:jobs_api_availability_ratio30m) / 0.005
+
+        # ---- Alert rules ----
+
+        - alert: JobsApiFastBurn
+          expr: slo:jobs_api_error_budget_burn_rate5m_1h > 14.4
+          for: 5m
+          labels:
+            severity: critical
+            service: jobs-api
+            team: team-alpha
+          annotations:
+            summary: "jobs-api error budget fast burn detected"
+            description: >
+              jobs-api is burning more than 14.4x its 30-day error budget
+              (based on 5m/1h windows). Immediate action required.
+
+        - alert: JobsApiSlowBurn
+          expr: slo:jobs_api_error_budget_burn_rate30m_6h > 6
+          for: 30m
+          labels:
+            severity: warning
+            service: jobs-api
+            team: team-alpha
+          annotations:
+            summary: "jobs-api error budget slow burn detected"
+            description: >
+              jobs-api is burning more than 6x its 30-day error budget
+              (based on 30m/6h windows). Monitor closely and plan remediation.
+
+        # ---- Job queue and processing alerts ----
+
+        - alert: JobQueueDepthHigh
+          expr: jobs_api_queue_depth > 100
+          for: 10m
+          labels:
+            severity: warning
+            service: jobs-api
+            team: team-alpha
+          annotations:
+            summary: "Job queue depth is high"
+            description: "Job queue depth is {{ $value }} (threshold: 100). Consider scaling jobs-worker."
+
+        - alert: JobProcessingLatencyHigh
+          expr: histogram_quantile(0.95, rate(jobs_worker_job_duration_seconds_bucket[5m])) > 10
+          for: 5m
+          labels:
+            severity: warning
+            service: jobs-worker
+            team: team-alpha
+          annotations:
+            summary: "Job processing latency is high"
+            description: "P95 job processing time is {{ $value }}s (threshold: 10s)."
+
+        - alert: JobDeadletterQueueNotEmpty
+          expr: jobs_worker_deadletter_queue_depth > 0
+          for: 5m
+          labels:
+            severity: critical
+            service: jobs-worker
+            team: team-alpha
+          annotations:
+            summary: "Jobs in deadletter queue detected"
+            description: " {{ $value }} jobs in deadletter queue. Manual investigation required."
+
+        # ---- Cost tracking alerts ----
+
+        - alert: DailyJobCostSpike
+          expr: |
+            increase(jobs_api_job_cost_total[1h]) > 
+            avg_over_time(increase(jobs_api_job_cost_total[1h])[7d:1h]) * 2
+          for: 10m
+          labels:
+            severity: warning
+            service: jobs-api
+            team: team-alpha
+          annotations:
+            summary: "Job cost spike detected"
+            description: "Hourly job cost is {{ $value }}USD, double the 7-day average. Investigate cost anomalies."

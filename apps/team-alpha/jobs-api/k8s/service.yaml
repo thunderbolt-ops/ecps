@@ -5,6 +5,7 @@ metadata:
   namespace: team-alpha
   labels:
     app: jobs-api
+    team: team-alpha
 spec:
   selector:
     app: jobs-api
@@ -12,3 +13,4 @@ spec:
     - name: http
       port: 80
       targetPort: 8000
+

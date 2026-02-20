@@ -1,8 +1,10 @@
 import os
 import time
+import json
+import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from starlette.requests import Request
 
 from datetime import datetime
@@ -11,6 +13,35 @@ from typing import List
 import psycopg2
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
+# Configure structured logging
+class StructuredLogger:
+    """JSON structured logging with context."""
+    def __init__(self, service_name, team, environment):
+        self.service_name = service_name
+        self.team = team
+        self.environment = environment
+        self.logger = logging.getLogger(service_name)
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(message)s'))
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
+    
+    def log(self, level, message, **context):
+        log_context = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "service": self.service_name,
+            "team": self.team,
+            "environment": self.environment,
+            "level": level,
+            "message": message,
+        }
+        log_context.update(context)
+        self.logger.info(json.dumps(log_context))
+
+APP_TEAM = os.getenv("APP_TEAM", "team-alpha")
+APP_ENV = os.getenv("APP_ENV", "dev")
+logger = StructuredLogger("billing-api", APP_TEAM, APP_ENV)
 
 app = FastAPI(
     title="Billing API",
@@ -36,6 +67,25 @@ REQUEST_LATENCY = Histogram(
 DB_ERRORS = Counter(
     "billing_api_db_errors_total",
     "Total database errors in billing-api",
+)
+
+# Cost attribution metrics
+COST_RECORDED = Counter(
+    "billing_api_cost_recorded_total",
+    "Total cost recorded (USD)",
+    ["team", "service"],
+)
+
+COST_PER_REQUEST = Histogram(
+    "billing_api_cost_per_request_dollars",
+    "Cost per request in dollars",
+    ["endpoint"],
+)
+
+USAGE_UNITS_TOTAL = Counter(
+    "billing_api_usage_units_total",
+    "Total usage units recorded",
+    ["team", "service"],
 )
 
 
@@ -193,22 +243,35 @@ def list_usage():
 
 @app.post("/api/v1/usage", response_model=UsageRecordOut)
 def create_usage(record: UsageRecordIn):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO usage_records (team, service, units, ts, cost)
-        VALUES (%s, %s, %s, %s, %s)
-        RETURNING id;
-        """,
-        (record.team, record.service, record.units, record.timestamp, record.cost),
-    )
-    new_id = cur.fetchone()[0]
-    conn.commit()
-    cur.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO usage_records (team, service, units, ts, cost)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id;
+            """,
+            (record.team, record.service, record.units, record.timestamp, record.cost),
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
 
-    return UsageRecordOut(id=new_id, **record.dict())
+        # Track cost metrics
+        COST_RECORDED.labels(team=record.team, service=record.service).inc(record.cost)
+        USAGE_UNITS_TOTAL.labels(team=record.team, service=record.service).inc(record.units)
+        COST_PER_REQUEST.labels(endpoint="/api/v1/usage").observe(record.cost)
+        
+        logger.log("info", "Usage recorded", team=record.team, service=record.service, 
+                   cost=record.cost, units=record.units, usage_id=new_id)
+        
+        return UsageRecordOut(id=new_id, **record.dict())
+    except Exception as e:
+        DB_ERRORS.inc()
+        logger.log("error", "Failed to record usage", error=str(e), team=record.team)
+        raise HTTPException(status_code=500, detail="Database error")
 
 
 @app.get("/api/v1/invoices", response_model=List[InvoiceOut])
@@ -270,26 +333,37 @@ def get_invoice(invoice_id: int):
 
 @app.post("/api/v1/invoices", response_model=InvoiceOut)
 def create_invoice(invoice: InvoiceIn):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO invoices (team, period_start, period_end, total_cost, status)
-        VALUES (%s, %s, %s, %s, %s)
-        RETURNING id;
-        """,
-        (
-            invoice.team,
-            invoice.period_start,
-            invoice.period_end,
-            invoice.total_cost,
-            invoice.status,
-        ),
-    )
-    new_id = cur.fetchone()[0]
-    conn.commit()
-    cur.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO invoices (team, period_start, period_end, total_cost, status)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id;
+            """,
+            (
+                invoice.team,
+                invoice.period_start,
+                invoice.period_end,
+                invoice.total_cost,
+                invoice.status,
+            ),
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
 
-    return InvoiceOut(id=new_id, **invoice.dict())
+        # Track invoice cost
+        COST_RECORDED.labels(team=invoice.team, service="billing-api").inc(invoice.total_cost)
+        logger.log("info", "Invoice created", team=invoice.team, total_cost=invoice.total_cost, 
+                   period_start=invoice.period_start.isoformat(), 
+                   period_end=invoice.period_end.isoformat(), invoice_id=new_id)
+        
+        return InvoiceOut(id=new_id, **invoice.dict())
+    except Exception as e:
+        DB_ERRORS.inc()
+        logger.log("error", "Failed to create invoice", error=str(e), team=invoice.team)
+        raise HTTPException(status_code=500, detail="Database error")
 

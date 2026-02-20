@@ -6,6 +6,8 @@ resource "helm_release" "argocd" {
 
   # Lightweight, non-HA Argo CD for local dev
   version = "7.5.2"
+  wait    = false
+  timeout = 300
 
   create_namespace = false
 

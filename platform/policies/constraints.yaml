@@ -1,0 +1,136 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  name: required-labels
+spec:
+  violation_message_key: msg
+  parameters:
+    labels: ["app", "team", "version"]
+  match:
+    excludedNamespaces: ["kube-system", "kube-public", "kube-node-lease"]
+    kinds:
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "StatefulSet", "DaemonSet"]
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sAllowedRepositories
+metadata:
+  name: allowed-registries
+spec:
+  violation_message_key: msg
+  parameters:
+    repos:
+      - "localhost:5000/"     # Local registry (for dev)
+      - "docker.io/"          # Docker Hub
+      - "gcr.io/"             # Google Container Registry
+      - "ecps-"               # Local ecps images
+  match:
+    excludedNamespaces: ["kube-system", "gatekeeper-system"]
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sFileIntegrity
+metadata:
+  name: file-integrity
+spec:
+  violation_message_key: msg
+  parameters:
+    exemptImages:
+      - "k8s.gcr.io/pause:3.4"
+      - "busybox:latest"
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+---
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8snorequiredlabels
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredLabels
+      validation:
+        openAPIV3Schema:
+          properties:
+            labels:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredlabels
+        
+        violation[{"msg": msg}] {
+          provided := {label | input.review.object.metadata.labels[label]}
+          required := {label | label := input.parameters.labels[_]}
+          missing := required - provided
+          count(missing) > 0
+          msg := sprintf("Missing required labels: %v", [missing])
+        }
+---
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8sallowedrepositories
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sAllowedRepositories
+      validation:
+        openAPIV3Schema:
+          properties:
+            repos:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sallowedrepositories
+        
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          image := container.image
+          not startswith(image, input.parameters.repos[_])
+          msg := sprintf("Invalid image registry: %v (allowed: %v)", [image, input.parameters.repos])
+        }
+---
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8sfileintegrity
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sFileIntegrity
+      validation:
+        openAPIV3Schema:
+          properties:
+            exemptImages:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sfileintegrity
+        
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          image := container.image
+          not image_exempt(image)
+          msg := sprintf("Image scan required: %v", [image])
+        }
+        
+        image_exempt(image) {
+          exempt := input.parameters.exemptImages[_]
+          startswith(image, exempt)
+        }

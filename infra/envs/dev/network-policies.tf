@@ -49,7 +49,7 @@ resource "kubernetes_network_policy" "team_alpha_allow_platform_ingress" {
       from {
         namespace_selector {
           match_labels = {
-            "ecps.io/type" = "system"
+            "ecps.io/owner" = "platform"
           }
         }
       }
@@ -85,6 +85,70 @@ resource "kubernetes_network_policy" "team_alpha_allow_same_namespace_egress" {
     egress {
       to {
         pod_selector {}
+      }
+    }
+
+    policy_types = ["Egress"]
+  }
+}
+
+# 5b. Allow egress from team-alpha to platform namespaces (platform-system/data/identity/observability)
+resource "kubernetes_network_policy" "team_alpha_allow_platform_egress" {
+  metadata {
+    name      = "allow-platform-egress"
+    namespace = kubernetes_namespace.team_alpha.metadata[0].name
+  }
+
+  spec {
+    pod_selector {}
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            "ecps.io/owner" = "platform"
+          }
+        }
+      }
+    }
+
+    policy_types = ["Egress"]
+  }
+}
+
+# 5c. Allow DNS egress from team-alpha (CoreDNS in kube-system)
+resource "kubernetes_network_policy" "team_alpha_allow_dns_egress" {
+  metadata {
+    name      = "allow-dns-egress"
+    namespace = kubernetes_namespace.team_alpha.metadata[0].name
+  }
+
+  spec {
+    pod_selector {}
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            "kubernetes.io/metadata.name" = "kube-system"
+          }
+        }
+
+        pod_selector {
+          match_labels = {
+            "k8s-app" = "kube-dns"
+          }
+        }
+      }
+
+      ports {
+        protocol = "UDP"
+        port     = 53
+      }
+
+      ports {
+        protocol = "TCP"
+        port     = 53
       }
     }
 
@@ -143,7 +207,7 @@ resource "kubernetes_network_policy" "team_beta_allow_platform_ingress" {
       from {
         namespace_selector {
           match_labels = {
-            "ecps.io/type" = "system"
+            "ecps.io/owner" = "platform"
           }
         }
       }
@@ -179,6 +243,70 @@ resource "kubernetes_network_policy" "team_beta_allow_same_namespace_egress" {
     egress {
       to {
         pod_selector {}
+      }
+    }
+
+    policy_types = ["Egress"]
+  }
+}
+
+# 10b. Allow egress from team-beta to platform namespaces (platform-system/data/identity/observability)
+resource "kubernetes_network_policy" "team_beta_allow_platform_egress" {
+  metadata {
+    name      = "allow-platform-egress"
+    namespace = kubernetes_namespace.team_beta.metadata[0].name
+  }
+
+  spec {
+    pod_selector {}
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            "ecps.io/owner" = "platform"
+          }
+        }
+      }
+    }
+
+    policy_types = ["Egress"]
+  }
+}
+
+# 10c. Allow DNS egress from team-beta (CoreDNS in kube-system)
+resource "kubernetes_network_policy" "team_beta_allow_dns_egress" {
+  metadata {
+    name      = "allow-dns-egress"
+    namespace = kubernetes_namespace.team_beta.metadata[0].name
+  }
+
+  spec {
+    pod_selector {}
+
+    egress {
+      to {
+        namespace_selector {
+          match_labels = {
+            "kubernetes.io/metadata.name" = "kube-system"
+          }
+        }
+
+        pod_selector {
+          match_labels = {
+            "k8s-app" = "kube-dns"
+          }
+        }
+      }
+
+      ports {
+        protocol = "UDP"
+        port     = 53
+      }
+
+      ports {
+        protocol = "TCP"
+        port     = 53
       }
     }
 
